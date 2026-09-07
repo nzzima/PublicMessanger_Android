@@ -24,6 +24,7 @@ import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.session.domain.api.SessionCloser
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionReader
+import com.nzzima.secretmessanger.session.domain.api.SessionValidator
 import org.junit.Test
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.test.verify.verify
@@ -62,6 +63,7 @@ class ModulesTest {
                 LoginRepository::class,
                 ProfileRepository::class,
                 SessionReader::class,
+                SessionValidator::class,
                 SessionCloser::class,
                 IdentityKeyStore::class,
                 PublicKeyRepository::class,

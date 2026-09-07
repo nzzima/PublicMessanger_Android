@@ -6,6 +6,14 @@ sealed interface RootState {
     /** Сессии нет. */
     data object Anonymous : RootState
 
+    /**
+     * Сессия на устройстве есть, но сервис её не признаёт.
+     *
+     * Отдельно от [Failed]: у того есть смысл в кнопке «Повторить», а здесь повтор не
+     * пройдёт никогда — нужен новый вход.
+     */
+    data object Expired : RootState
+
     /** Сессия есть, ключ проверяется. Назначение не меняется, пока проверка идёт. */
     data object Checking : RootState
 

@@ -45,10 +45,15 @@ class ProfileViewModel(
 
         subscription = viewModelScope.launch {
             profileInteractor.observeProfile(uid).collect { snapshot ->
-                profileScreenState.value = snapshot.fold(
-                    onSuccess = { ProfileUiState.Content(it) },
-                    onFailure = { ProfileUiState.Failed(it.message ?: Constants.SERVER_SILENT) },
-                )
+                snapshot
+                    .onSuccess { profileScreenState.value = ProfileUiState.Content(it) }
+                    .onFailure {
+                        profileScreenState.value = ProfileUiState.Failed(it.message ?: Constants.SERVER_SILENT)
+                        // Отказ Firestore не отличает мёртвую сессию от обрыва связи, а
+                        // «Повторить» лечит только второе. Проверка разводит эти два случая:
+                        // мёртвая сессия уводит с вкладок целиком.
+                        sessionInteractor.revalidate()
+                    }
             }
         }
     }

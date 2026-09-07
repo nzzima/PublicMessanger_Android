@@ -34,6 +34,7 @@ object Constants {
     const val MASTER_KEY_ALIAS = "com.nzzima.secretmessanger.master"
 
     const val AUTH_ROUTE = "auth"
+    const val EXPIRED_ROUTE = "expired"
     const val IDENTITY_ROUTE = "identity"
     const val REPAIR_ROUTE = "repair"
     const val LOADING_ROUTE = "loading"
@@ -97,4 +98,9 @@ object Constants {
     const val IDENTITY_WARNING = "У этого аккаунта уже есть ключ шифрования, заведённый на другом устройстве. Перенести его сюда нечем. Продолжить можно только со своим ключом — тогда прежняя переписка не откроется ни здесь, ни на том устройстве."
     const val IDENTITY_CONTINUE = "Продолжить со своим ключом"
     const val RETRY = "Повторить"
+
+    const val SESSION_EXPIRED = "Вход устарел — войдите заново"
+    const val SESSION_EXPIRED_TITLE = "Вход устарел"
+    const val SESSION_EXPIRED_EXPLANATION = "Сервис больше не признаёт вход с этого устройства: пароль могли сменить, а сам вход — устареть от долгого перерыва. Ключ и переписка на месте, нужен только новый вход."
+    const val SESSION_EXPIRED_SUBMIT = "Войти заново"
 }

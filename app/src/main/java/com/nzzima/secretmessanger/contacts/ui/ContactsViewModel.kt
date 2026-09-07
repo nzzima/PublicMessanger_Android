@@ -43,10 +43,18 @@ class ContactsViewModel(
 
         subscription = viewModelScope.launch {
             contactsInteractor.observeContacts(uid).collect { snapshot ->
-                contactsScreenState.value = snapshot.fold(
-                    onSuccess = { if (it.isEmpty()) ContactsUiState.Empty else ContactsUiState.Content(it) },
-                    onFailure = { ContactsUiState.Failed(it.message ?: Constants.SERVER_SILENT) },
-                )
+                snapshot
+                    .onSuccess {
+                        contactsScreenState.value =
+                            if (it.isEmpty()) ContactsUiState.Empty else ContactsUiState.Content(it)
+                    }
+                    .onFailure {
+                        contactsScreenState.value = ContactsUiState.Failed(it.message ?: Constants.SERVER_SILENT)
+                        // Отказ Firestore не отличает мёртвую сессию от обрыва связи, а
+                        // «Повторить» лечит только второе. Проверка разводит эти два случая:
+                        // мёртвая сессия уводит с вкладок целиком.
+                        sessionInteractor.revalidate()
+                    }
             }
         }
     }

@@ -8,6 +8,7 @@ import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
 import com.nzzima.secretmessanger.session.domain.FakeSessionRepository
 import com.nzzima.secretmessanger.session.domain.impl.SessionInteractorImpl
 import com.nzzima.secretmessanger.session.domain.models.Session
+import com.nzzima.secretmessanger.session.domain.models.SessionFailure
 import com.nzzima.secretmessanger.utils.constants.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -39,7 +40,7 @@ class ChatsViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel() = ChatsViewModel(
-        SessionInteractorImpl(sessions, sessions),
+        SessionInteractorImpl(sessions, sessions, sessions),
         ChatsInteractorImpl(conversations, noKeys),
     )
 
@@ -120,6 +121,34 @@ class ChatsViewModelTest {
             listOf("живой"),
             (model.state() as ChatsUiState.Content).conversations.map { it.chat.id },
         )
+    }
+
+    @Test
+    fun `отказ подписки проверяет сессию`() = runTest(dispatcher) {
+        conversations.fail(IllegalStateException("PERMISSION_DENIED"))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("отказ обязан проверяться на мёртвую сессию", 1, sessions.revalidations)
+    }
+
+    @Test
+    fun `успешный снимок сессию не переспрашивает`() = runTest(dispatcher) {
+        conversations.send(listOf(header(chat = chat(id = "живой"), lastMessage = "привет")))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(0, sessions.revalidations)
+    }
+
+    @Test
+    fun `мёртвая сессия, найденная по отказу, снимает сессию с аккаунта`() = runTest(dispatcher) {
+        sessions.revalidateFails = SessionFailure.Expired
+        conversations.fail(IllegalStateException("PERMISSION_DENIED"))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame(Session.Expired, sessions.session.value)
     }
 
     @Test

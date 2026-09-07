@@ -17,6 +17,9 @@ import kotlinx.coroutines.launch
  * Идентификатор аккаунта берётся из сессии в момент подписки: вкладка достижима только из
  * [com.nzzima.secretmessanger.main.ui.RootState.Ready], то есть при живой сессии. Смену
  * аккаунта модель не отслеживает — выход уводит с вкладок целиком.
+ *
+ * Отказ подписки проверяется на мёртвую сессию: с ней «Повторить» не сработает никогда, и
+ * решение принимает оболочка, а не эта вкладка.
  */
 class ChatsViewModel(
     private val sessionInteractor: SessionInteractor,
@@ -49,10 +52,18 @@ class ChatsViewModel(
 
         subscription = viewModelScope.launch {
             chatsInteractor.observeConversations(uid).collect { snapshot ->
-                chatsScreenState.value = snapshot.fold(
-                    onSuccess = { if (it.isEmpty()) ChatsUiState.Empty else ChatsUiState.Content(it) },
-                    onFailure = { ChatsUiState.Failed(it.message ?: Constants.SERVER_SILENT) },
-                )
+                snapshot
+                    .onSuccess {
+                        chatsScreenState.value =
+                            if (it.isEmpty()) ChatsUiState.Empty else ChatsUiState.Content(it)
+                    }
+                    .onFailure {
+                        chatsScreenState.value = ChatsUiState.Failed(it.message ?: Constants.SERVER_SILENT)
+                        // Отказ Firestore не отличает мёртвую сессию от обрыва связи, а
+                        // «Повторить» лечит только второе. Проверка разводит эти два случая:
+                        // мёртвая сессия уводит с вкладок целиком.
+                        sessionInteractor.revalidate()
+                    }
             }
         }
     }

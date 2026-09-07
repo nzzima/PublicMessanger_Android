@@ -8,6 +8,7 @@ import com.nzzima.secretmessanger.crypto.domain.models.IdentityState
 import com.nzzima.secretmessanger.session.domain.FakeSessionRepository
 import com.nzzima.secretmessanger.session.domain.impl.SessionInteractorImpl
 import com.nzzima.secretmessanger.session.domain.models.Session
+import com.nzzima.secretmessanger.session.domain.models.SessionFailure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -42,7 +43,7 @@ class RootViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel() = RootViewModel(
-        SessionInteractorImpl(sessions, sessions),
+        SessionInteractorImpl(sessions, sessions, sessions),
         identity,
         ProfileRepairInteractorImpl(profiles, logins),
     )
@@ -132,6 +133,56 @@ class RootViewModelTest {
     }
 
     @Test
+    fun `мёртвая сессия уводит на экран входа, не трогая профиль и ключ`() = runTest(dispatcher) {
+        sessions.revalidateFails = SessionFailure.Expired
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame(RootState.Expired, model.state())
+        assertEquals("мёртвая сессия не должна доходить до ключа", 0, identity.prepares)
+    }
+
+    @Test
+    fun `отказ связи при проверке сессии оставляет повтор осмысленным`() = runTest(dispatcher) {
+        sessions.revalidateFails = IllegalStateException("client is offline")
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(RootState.Failed("client is offline"), model.state())
+
+        sessions.revalidateFails = null
+        model.retry()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame(RootState.Ready, model.state())
+    }
+
+    @Test
+    fun `живая сессия проверяется ровно один раз за вход`() = runTest(dispatcher) {
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame(RootState.Ready, model.state())
+        assertEquals(1, sessions.revalidations)
+    }
+
+    @Test
+    fun `выход с экрана устаревшего входа открывает авторизацию`() = runTest(dispatcher) {
+        sessions.revalidateFails = SessionFailure.Expired
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        model.signOut()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame(RootState.Anonymous, model.state())
+    }
+
+    @Test
     fun `выход возвращает в анонимное состояние`() = runTest(dispatcher) {
         sessions.signIn("uid-1")
         val model = viewModel()
@@ -185,7 +236,7 @@ class RootViewModelRepairTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel() = RootViewModel(
-        SessionInteractorImpl(sessions, sessions),
+        SessionInteractorImpl(sessions, sessions, sessions),
         identity,
         ProfileRepairInteractorImpl(profiles, logins),
     )

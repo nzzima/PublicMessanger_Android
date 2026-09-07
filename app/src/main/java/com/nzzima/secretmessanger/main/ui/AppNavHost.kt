@@ -16,6 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import com.nzzima.secretmessanger.auth.ui.AuthScreen
 import com.nzzima.secretmessanger.auth.ui.RepairProfileScreen
 import com.nzzima.secretmessanger.crypto.ui.IdentityScreen
+import com.nzzima.secretmessanger.session.ui.SessionExpiredScreen
 import com.nzzima.secretmessanger.utils.constants.Constants
 import org.koin.androidx.compose.koinViewModel
 
@@ -40,6 +41,7 @@ fun AppNavHost(
 
     val target = when (state) {
         RootState.Anonymous -> Destination.Auth
+        RootState.Expired -> Destination.Expired
         RootState.Checking -> Destination.Loading
         is RootState.NeedsProfile -> Destination.Repair
         RootState.NeedsConfirmation, is RootState.Failed -> Destination.Identity
@@ -64,6 +66,9 @@ fun AppNavHost(
         }
         composable(Destination.Auth.route) {
             AuthScreen()
+        }
+        composable(Destination.Expired.route) {
+            SessionExpiredScreen(onSignIn = viewModel::signOut)
         }
         composable(Destination.Repair.route) {
             RepairProfileScreen(

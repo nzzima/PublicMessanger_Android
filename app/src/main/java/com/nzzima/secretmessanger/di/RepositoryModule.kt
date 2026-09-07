@@ -21,13 +21,14 @@ import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.session.data.impl.SessionRepositoryImpl
 import com.nzzima.secretmessanger.session.domain.api.SessionCloser
 import com.nzzima.secretmessanger.session.domain.api.SessionReader
+import com.nzzima.secretmessanger.session.domain.api.SessionValidator
 import org.koin.dsl.binds
 import org.koin.dsl.module
 
 /**
  * Реализации репозиториев.
  *
- * [SessionRepositoryImpl] объявлен одним определением на два интерфейса: он держит
+ * [SessionRepositoryImpl] объявлен одним определением на три интерфейса: он держит
  * состояние сессии, и второй экземпляр слушал бы авторизацию отдельно.
  */
 val repositoryModule = module {
@@ -70,5 +71,5 @@ val repositoryModule = module {
 
     single {
         SessionRepositoryImpl(get())
-    } binds arrayOf(SessionReader::class, SessionCloser::class)
+    } binds arrayOf(SessionReader::class, SessionValidator::class, SessionCloser::class)
 }

@@ -45,7 +45,7 @@ val interactorModule = module {
     }
 
     single<SessionInteractor> {
-        SessionInteractorImpl(get(), get())
+        SessionInteractorImpl(get(), get(), get())
     }
 
     single<ConversationKeys> {

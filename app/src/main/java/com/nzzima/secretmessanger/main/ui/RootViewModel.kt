@@ -7,6 +7,7 @@ import com.nzzima.secretmessanger.crypto.domain.api.IdentityInteractor
 import com.nzzima.secretmessanger.crypto.domain.models.IdentityState
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.session.domain.models.Session
+import com.nzzima.secretmessanger.session.domain.models.SessionFailure
 import com.nzzima.secretmessanger.utils.constants.Constants
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,10 +23,13 @@ import kotlinx.coroutines.launch
  * [RootState.Ready] выставляется только после успешной проверки, поэтому мимо развилки в
  * список диалогов не попасть.
  *
- * Порядок проверок обязателен: сначала профиль, потом ключ. Публикация открытой половины
- * пишет `users/{uid}` слиянием, а правило этой коллекции требует в записи логин, занятый тем
- * же аккаунтом, — на аккаунте без профиля публикация не проходит, и развилка ключа стала бы
- * тупиком без выхода.
+ * Порядок проверок обязателен: сначала сессия, потом профиль, потом ключ. Профиль и ключ
+ * читаются из Firestore, а мёртвая сессия отказывает там неотличимо от обрыва связи — без
+ * первой проверки вход упирался бы в «Повторить», которое не сработает никогда.
+ *
+ * Профиль раньше ключа по своей причине: публикация открытой половины пишет `users/{uid}`
+ * слиянием, а правило этой коллекции требует в записи логин, занятый тем же аккаунтом, — на
+ * аккаунте без профиля публикация не проходит, и развилка ключа стала бы тупиком без выхода.
  */
 class RootViewModel(
     private val sessionInteractor: SessionInteractor,
@@ -43,6 +47,7 @@ class RootViewModel(
             sessionInteractor.observeSession().collect { session ->
                 when (session) {
                     is Session.Anonymous -> rootState.value = RootState.Anonymous
+                    is Session.Expired -> rootState.value = RootState.Expired
                     is Session.Authenticated -> prepare(session.uid)
                 }
             }
@@ -91,6 +96,16 @@ class RootViewModel(
 
     private suspend fun prepare(uid: String) {
         rootState.value = RootState.Checking
+
+        sessionInteractor.revalidate().onFailure { error ->
+            // Мёртвую сессию репозиторий уже перевёл в Session.Expired; состояние
+            // выставляется здесь же, чтобы не зависеть от порядка повторной выдачи потока.
+            rootState.value = when (error) {
+                is SessionFailure.Expired -> RootState.Expired
+                else -> RootState.Failed(error.message ?: Constants.SERVER_SILENT)
+            }
+            return
+        }
 
         val complete = profileRepairInteractor.isComplete(uid).getOrElse { error ->
             rootState.value = RootState.Failed(error.message ?: Constants.SERVER_SILENT)
