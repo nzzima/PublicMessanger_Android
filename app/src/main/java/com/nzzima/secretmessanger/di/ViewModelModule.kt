@@ -26,7 +26,7 @@ val viewModelModule = module {
     }
 
     viewModel {
-        ContactsViewModel(get(), get())
+        ContactsViewModel(get(), get(), get())
     }
 
     viewModel {

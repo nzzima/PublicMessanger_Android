@@ -12,6 +12,7 @@ import com.nzzima.secretmessanger.auth.domain.api.RegistrationInteractor
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationRepository
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
+import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsRepository
 import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
@@ -94,6 +95,7 @@ class ModulesTest {
                 ContactsInteractor::class,
                 ProfileInteractor::class,
                 MessangerInteractor::class,
+                ConversationStarter::class,
             ),
             injections = injectedParameters(definition<MessangerViewModel>(String::class)),
         )

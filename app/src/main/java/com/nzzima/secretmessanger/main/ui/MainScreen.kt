@@ -83,7 +83,9 @@ fun MainScreen(
             startDestination = Tab.Contacts.route,
             modifier = Modifier.fillMaxSize().padding(bottom = insets.calculateBottomPadding()),
         ) {
-            composable(Tab.Contacts.route) { ContactsScreen() }
+            composable(Tab.Contacts.route) {
+                ContactsScreen(onOpen = { convoId -> navController.navigate(messangerRoute(convoId)) })
+            }
             composable(Tab.Chats.route) {
                 ChatsScreen(onOpen = { convoId -> navController.navigate(messangerRoute(convoId)) })
             }
