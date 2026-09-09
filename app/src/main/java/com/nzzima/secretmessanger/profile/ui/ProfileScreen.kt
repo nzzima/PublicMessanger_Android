@@ -10,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -24,8 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -107,13 +104,13 @@ private fun ProfileBody(profile: Profile, onSignOut: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Field(Constants.PROFILE_LOGIN, profile.login)
-            Field(Constants.PROFILE_NAME, profile.name)
+            ProfileField(Constants.PROFILE_LOGIN, profile.login)
+            ProfileField(Constants.PROFILE_NAME, profile.name)
         }
 
         // Идентификатор внизу и моноширинным: техническая строка, которую не читают, а
         // сверяют.
-        Field(
+        ProfileField(
             title = Constants.PROFILE_IDENTIFIER,
             value = profile.id,
             monospaced = true,
@@ -126,28 +123,3 @@ private fun ProfileBody(profile: Profile, onSignOut: () -> Unit) {
     }
 }
 
-@Composable
-private fun Field(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    monospaced: Boolean = false,
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(text = title, color = InkDim, fontSize = 13.sp)
-        Text(
-            text = value,
-            color = Ink,
-            style = if (monospaced) {
-                TextStyle(fontSize = 14.sp, fontFamily = FontFamily.Monospace)
-            } else {
-                TextStyle(fontSize = 17.sp)
-            },
-            modifier = Modifier.padding(top = 2.dp),
-        )
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-    }
-}

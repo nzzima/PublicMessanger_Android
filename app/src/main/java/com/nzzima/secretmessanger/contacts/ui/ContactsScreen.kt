@@ -2,7 +2,6 @@ package com.nzzima.secretmessanger.contacts.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,12 +19,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,7 +30,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nzzima.secretmessanger.contacts.domain.models.Contact
 import com.nzzima.secretmessanger.ui.components.FailureNotice
 import com.nzzima.secretmessanger.ui.components.Notice
-import com.nzzima.secretmessanger.ui.theme.ErrorColor
 import com.nzzima.secretmessanger.ui.theme.Ink
 import com.nzzima.secretmessanger.utils.constants.Constants
 import org.koin.androidx.compose.koinViewModel
@@ -41,28 +37,20 @@ import org.koin.androidx.compose.koinViewModel
 /**
  * Экран контактов.
  *
- * Нажатие по строке открывает переписку, заводя диалог, если его ещё не было. Переход
- * поручает модель: заведение — это чтение профиля и запись шапки, и до конца этой работы
- * открывать нечего.
+ * Нажатие по строке открывает профиль человека, а не переписку: диалог заводится оттуда,
+ * кнопкой, — как на iOS. Работы у нажатия поэтому нет никакой, и модель о нём не знает.
  *
- * @param onOpen переход в переписку заведённого диалога.
+ * @param onOpen переход в профиль: идентификатор аккаунта и имя из списка. Имя нужно
+ *   заголовку профиля до того, как тот подгрузится: экран не должен открываться безымянным.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactsScreen(
-    onOpen: (String) -> Unit,
+    onOpen: (Contact) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ContactsViewModel = koinViewModel(),
 ) {
     val state by viewModel.observeContactsScreenState().collectAsStateWithLifecycle()
-    val opened = (state as? ContactsUiState.Content)?.opened
-
-    LaunchedEffect(opened) {
-        if (opened != null) {
-            onOpen(opened)
-            viewModel.onOpened()
-        }
-    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -83,7 +71,7 @@ fun ContactsScreen(
 
                 ContactsUiState.Empty -> Notice(Constants.CONTACTS_EMPTY)
 
-                is ContactsUiState.Content -> ContactList(current, viewModel::onContactTap)
+                is ContactsUiState.Content -> ContactList(current.contacts, onOpen)
 
                 is ContactsUiState.Failed -> FailureNotice(current.message, viewModel::retry)
             }
@@ -92,34 +80,22 @@ fun ContactsScreen(
 }
 
 @Composable
-private fun ContactList(state: ContactsUiState.Content, onTap: (Contact) -> Unit) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            items(state.contacts, key = { it.id }) { contact ->
-                Text(
-                    text = contact.login,
-                    color = Ink,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onTap(contact) }
-                        .padding(horizontal = SIDE_PADDING, vertical = ROW_PADDING),
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.surface)
-            }
-        }
-
-        state.error?.let { message ->
+private fun ContactList(contacts: List<Contact>, onOpen: (Contact) -> Unit) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(contacts, key = { it.id }) { contact ->
             Text(
-                text = message,
-                color = ErrorColor,
-                fontSize = 13.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(SIDE_PADDING),
+                text = contact.login,
+                color = Ink,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpen(contact) }
+                    .padding(horizontal = SIDE_PADDING, vertical = ROW_PADDING),
             )
+            HorizontalDivider(color = MaterialTheme.colorScheme.surface)
         }
     }
 }

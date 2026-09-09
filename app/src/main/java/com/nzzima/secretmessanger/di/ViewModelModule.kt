@@ -6,14 +6,15 @@ import com.nzzima.secretmessanger.contacts.ui.ContactsViewModel
 import com.nzzima.secretmessanger.main.ui.RootViewModel
 import com.nzzima.secretmessanger.messanger.ui.MessangerViewModel
 import com.nzzima.secretmessanger.profile.ui.ProfileViewModel
+import com.nzzima.secretmessanger.profile.ui.UserProfileViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 /**
  * Модели представления экранов.
  *
- * [MessangerViewModel] получает диалог параметром: он приходит аргументом назначения, а
- * не из графа зависимостей.
+ * [MessangerViewModel] и [UserProfileViewModel] получают параметры: диалог и человек
+ * приходят аргументами назначения, а не из графа зависимостей.
  */
 val viewModelModule = module {
 
@@ -26,7 +27,7 @@ val viewModelModule = module {
     }
 
     viewModel {
-        ContactsViewModel(get(), get(), get())
+        ContactsViewModel(get(), get())
     }
 
     viewModel {
@@ -35,6 +36,10 @@ val viewModelModule = module {
 
     viewModel { (convoId: String) ->
         MessangerViewModel(convoId, get(), get())
+    }
+
+    viewModel { (userId: String, login: String) ->
+        UserProfileViewModel(userId, login, get(), get(), get())
     }
 
     viewModel {

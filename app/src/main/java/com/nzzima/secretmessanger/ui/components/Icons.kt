@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
  *
  * Своя отрисовка вместо `material-icons`: набор объявлен устаревшим, а нужна из него
  * горстка глифов. Контуры повторяют символы iOS — `person.circle`, `ellipsis.message`,
- * `person`, `chevron.left`, `arrow.up.circle`.
+ * `person`, `chevron.left`, `arrow.up.circle`, `message`.
  *
  * Все строятся в поле 24×24 и рисуются обводкой, поэтому цвет задаёт вызывающий через
  * `tint`.
@@ -103,4 +103,26 @@ val SendIcon: ImageVector = strokeIcon("send") {
     moveTo(8.3f, 11.5f)
     lineTo(12f, 7.8f)
     lineTo(15.7f, 11.5f)
+}
+
+/**
+ * Облако реплики без многоточия — «написать» в чужом профиле.
+ *
+ * От [ChatsIcon] отличается пустотой намеренно: та ведёт к списку разговоров, эта заводит
+ * новый. На iOS ровно та же пара — `ellipsis.message` и `message`.
+ */
+val WriteIcon: ImageVector = strokeIcon("write") {
+    moveTo(6f, 4.5f)
+    lineTo(18f, 4.5f)
+    arcToRelative(3.5f, 3.5f, 0f, false, true, 3.5f, 3.5f)
+    lineTo(21.5f, 14f)
+    arcToRelative(3.5f, 3.5f, 0f, false, true, -3.5f, 3.5f)
+    lineTo(11f, 17.5f)
+    lineTo(6.5f, 21f)
+    lineTo(6.5f, 17.5f)
+    lineTo(6f, 17.5f)
+    arcToRelative(3.5f, 3.5f, 0f, false, true, -3.5f, -3.5f)
+    lineTo(2.5f, 8f)
+    arcToRelative(3.5f, 3.5f, 0f, false, true, 3.5f, -3.5f)
+    close()
 }

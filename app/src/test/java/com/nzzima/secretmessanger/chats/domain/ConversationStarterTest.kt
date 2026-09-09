@@ -2,7 +2,6 @@ package com.nzzima.secretmessanger.chats.domain
 
 import com.nzzima.secretmessanger.chats.domain.impl.ConversationStarterImpl
 import com.nzzima.secretmessanger.chats.domain.models.CompanionKeyMissing
-import com.nzzima.secretmessanger.contacts.domain.models.Contact
 import com.nzzima.secretmessanger.crypto.data.impl.IdentityKeyStoreImpl
 import com.nzzima.secretmessanger.crypto.domain.CryptoBox
 import com.nzzima.secretmessanger.crypto.domain.FakeMasterKeyProvider
@@ -41,8 +40,6 @@ class ConversationStarterTest {
         profiles,
     )
 
-    private val contact = Contact(id = "uid-2", login = "companion")
-
     private lateinit var companionPrivate: ByteArray
 
     private fun encode(publicKey: ByteArray) = Base64.getEncoder().encodeToString(publicKey)
@@ -57,7 +54,7 @@ class ConversationStarterTest {
 
     @Test
     fun `новый диалог заводится с обоими участниками, именами и создателем`() = runTest {
-        val convoId = starter.start("uid-1", contact).getOrThrow()
+        val convoId = starter.start("uid-1", "uid-2", "companion").getOrThrow()
 
         assertEquals("uid-1_uid-2", convoId)
 
@@ -71,7 +68,7 @@ class ConversationStarterTest {
 
     @Test
     fun `ключ нового диалога открывается обеими сторонами`() = runTest {
-        starter.start("uid-1", contact).getOrThrow()
+        starter.start("uid-1", "uid-2", "companion").getOrThrow()
 
         val created = conversations.created.single()
         val mine = ConversationKeysImpl(identityKeys)
@@ -88,7 +85,7 @@ class ConversationStarterTest {
     fun `существующий диалог не заводится заново`() = runTest {
         conversations.stored["uid-1_uid-2"] = chat()
 
-        val convoId = starter.start("uid-1", contact).getOrThrow()
+        val convoId = starter.start("uid-1", "uid-2", "companion").getOrThrow()
 
         assertEquals("uid-1_uid-2", convoId)
         assertTrue("существующую шапку трогать нечем", conversations.created.isEmpty())
@@ -98,7 +95,7 @@ class ConversationStarterTest {
     fun `у собеседника нет опубликованной половины — диалог не заводится`() = runTest {
         publicKeys.stored.remove("uid-2")
 
-        val result = starter.start("uid-1", contact)
+        val result = starter.start("uid-1", "uid-2", "companion")
 
         assertTrue(result.exceptionOrNull() is CompanionKeyMissing)
         assertTrue("в базу не должно уйти ничего", conversations.created.isEmpty())
@@ -108,7 +105,7 @@ class ConversationStarterTest {
     fun `негодная половина собеседника — тот же отказ`() = runTest {
         publicKeys.stored["uid-2"] = "это не base64"
 
-        val result = starter.start("uid-1", contact)
+        val result = starter.start("uid-1", "uid-2", "companion")
 
         assertTrue(result.exceptionOrNull() is CompanionKeyMissing)
         assertTrue(conversations.created.isEmpty())
@@ -118,7 +115,7 @@ class ConversationStarterTest {
     fun `своего ключа на устройстве нет — отказ до всякой записи`() = runTest {
         identityKeys.forget("uid-1")
 
-        val result = starter.start("uid-1", contact)
+        val result = starter.start("uid-1", "uid-2", "companion")
 
         assertSame(CryptoFailure.NoKey, result.exceptionOrNull())
         assertTrue(conversations.created.isEmpty())
@@ -130,21 +127,21 @@ class ConversationStarterTest {
         // Собеседник завёл тот же диалог, пока мы запечатывали ключ.
         conversations.stored["uid-1_uid-2"] = chat()
 
-        assertEquals("uid-1_uid-2", starter.start("uid-1", contact).getOrThrow())
+        assertEquals("uid-1_uid-2", starter.start("uid-1", "uid-2", "companion").getOrThrow())
     }
 
     @Test
     fun `отказ записи без появившейся шапки доходит отказом`() = runTest {
         conversations.createFails = IllegalStateException("нет связи")
 
-        assertEquals("нет связи", starter.start("uid-1", contact).exceptionOrNull()?.message)
+        assertEquals("нет связи", starter.start("uid-1", "uid-2", "companion").exceptionOrNull()?.message)
     }
 
     @Test
     fun `отказ чтения шапки доходит отказом и ничего не заводит`() = runTest {
         conversations.readFails = IllegalStateException("нет связи")
 
-        val result = starter.start("uid-1", contact)
+        val result = starter.start("uid-1", "uid-2", "companion")
 
         assertEquals("нет связи", result.exceptionOrNull()?.message)
         assertTrue(conversations.created.isEmpty())
@@ -154,7 +151,7 @@ class ConversationStarterTest {
     fun `профиль без логина не выдумывается — отказ доходит наверх`() = runTest {
         profiles.fail(IllegalStateException("профиля нет"))
 
-        val result = starter.start("uid-1", contact)
+        val result = starter.start("uid-1", "uid-2", "companion")
 
         assertEquals("профиля нет", result.exceptionOrNull()?.message)
         assertTrue(conversations.created.isEmpty())

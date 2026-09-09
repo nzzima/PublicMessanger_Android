@@ -56,7 +56,10 @@ object Constants {
     const val CHATS_ROUTE = "chats"
     const val PROFILE_ROUTE = "profile"
     const val MESSANGER_ROUTE = "messanger"
+    const val USER_ROUTE = "user"
     const val CONVO_ID_ARGUMENT = "convoId"
+    const val USER_ID_ARGUMENT = "userId"
+    const val LOGIN_ARGUMENT = "login"
 
     const val LOGIN_MIN_LENGTH = 3
     const val LOGIN_MAX_LENGTH = 20
@@ -117,6 +120,8 @@ object Constants {
     const val PROFILE_LOGIN = "Логин"
     const val PROFILE_NAME = "Имя"
     const val PROFILE_IDENTIFIER = "Идентификатор"
+    const val PROFILE_NOTE = "Заметка"
+    const val WRITE_MESSAGE = "Написать"
 
     const val SIGN_OUT = "Выйти"
 

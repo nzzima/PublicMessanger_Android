@@ -25,6 +25,7 @@ import com.nzzima.secretmessanger.messanger.domain.api.MessangerInteractor
 import com.nzzima.secretmessanger.messanger.ui.MessangerViewModel
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
+import com.nzzima.secretmessanger.profile.ui.UserProfileViewModel
 import com.nzzima.secretmessanger.session.domain.api.SessionCloser
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionReader
@@ -97,7 +98,10 @@ class ModulesTest {
                 MessangerInteractor::class,
                 ConversationStarter::class,
             ),
-            injections = injectedParameters(definition<MessangerViewModel>(String::class)),
+            injections = injectedParameters(
+                definition<MessangerViewModel>(String::class),
+                definition<UserProfileViewModel>(String::class, String::class),
+            ),
         )
     }
 }
