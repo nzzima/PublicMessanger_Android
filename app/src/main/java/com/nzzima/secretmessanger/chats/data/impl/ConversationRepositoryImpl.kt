@@ -2,6 +2,7 @@ package com.nzzima.secretmessanger.chats.data.impl
 
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
@@ -10,6 +11,7 @@ import com.nzzima.secretmessanger.utils.constants.Constants
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 
 /**
  * [ConversationRepository] поверх Firestore.
@@ -63,6 +65,38 @@ class ConversationRepositoryImpl(private val firestore: FirebaseFirestore) : Con
 
         awaitClose(registration::remove)
     }
+
+    override suspend fun existing(convoId: String, selfId: String): Result<Chat?> = runCatching {
+        firestore.collection(Constants.CONVERSATION_COLLECTION)
+            .document(convoId)
+            .get()
+            .await()
+            .takeIf { it.exists() }
+            ?.toChat(selfId)
+    }.recoverCatching { error ->
+        // Отказ по правам на чтении означает «доступной шапки нет», и разбирать этот
+        // случай дальше нечем: правило `allow read: if isMember()` читает состав из
+        // resource.data, а у несуществующего документа resource пуст — проверка падает
+        // целиком, и отсутствие документа неотличимо от чужого документа. Оба исхода
+        // ведут в одно место: пробовать завести. Чужую шапку правила при этом не дадут
+        // перезаписать — запись поверх неё пойдёт как изменение состава.
+        if (error.isPermissionDenied()) null else throw error
+    }
+
+    override suspend fun create(chat: Chat): Result<Unit> = runCatching {
+        firestore.collection(Constants.CONVERSATION_COLLECTION)
+            .document(chat.id)
+            .set(
+                mapOf(
+                    Constants.USERS_FIELD to chat.members,
+                    Constants.LOGINS_FIELD to chat.logins,
+                    Constants.OWNER_FIELD to chat.owner,
+                    Constants.CONVO_KEYS_FIELD to chat.convoKeys,
+                    Constants.KEY_VERSION_FIELD to chat.keyVersion,
+                ),
+            )
+            .await()
+    }
 }
 
 /**
@@ -98,6 +132,10 @@ private fun DocumentSnapshot.toChat(selfId: String): Chat? {
         keyVersion = getLong(Constants.KEY_VERSION_FIELD)?.toInt() ?: 0,
     )
 }
+
+/** Отказала ли операция по правам, а не по связи. */
+private fun Throwable.isPermissionDenied(): Boolean =
+    (this as? FirebaseFirestoreException)?.code == FirebaseFirestoreException.Code.PERMISSION_DENIED
 
 /** Список строк из поля документа; чужие типы и отсутствие поля дают пустой список. */
 private fun Any?.asStringList(): List<String> = (this as? List<*>)?.filterIsInstance<String>().orEmpty()

@@ -66,6 +66,8 @@ object Constants {
 
     const val MESSAGE_WINDOW = 50L
 
+    const val FIRST_KEY_VERSION = 1
+
     const val EMAIL_TAKEN = "Эта почта уже занята"
     const val WEAK_PASSWORD = "Пароль слишком простой"
     const val WRONG_CREDENTIALS = "Неверная почта или пароль"
@@ -107,6 +109,7 @@ object Constants {
 
     const val CONTACTS_TITLE = "Контакты"
     const val CONTACTS_EMPTY = "Кроме вас здесь пока никого нет"
+    const val COMPANION_KEY_MISSING = "Ключа шифрования у собеседника нет — переписку с ним завести нечем"
 
     const val PROFILE_MISSING = "Профиль этого аккаунта не найден"
 

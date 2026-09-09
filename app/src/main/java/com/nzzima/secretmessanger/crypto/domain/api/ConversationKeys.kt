@@ -27,4 +27,17 @@ interface ConversationKeys {
      *   невосстановимо: диалог этим устройством не откроется никогда.
      */
     fun open(convoId: String, uid: String, version: Int, entries: Map<String, String>): ByteArray?
+
+    /**
+     * Новый ключ диалога [convoId], запечатанный каждому участнику отдельно.
+     *
+     * Версия у нового диалога всегда первая: ротации заводит тот, кто правит состав, а
+     * состав Android не правит.
+     *
+     * @param publicKeys uid → открытая половина участника в base64.
+     * @return готовые записи для карты `convoKeys`; `null`, если хоть одна половина не
+     *   разобралась. Всё или ничего: участник, оставшийся без записи, не прочитает диалог
+     *   никогда — дозапечатывания, как у iOS, в Android нет.
+     */
+    fun sealNew(convoId: String, publicKeys: Map<String, String>): Map<String, String>?
 }

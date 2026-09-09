@@ -3,7 +3,7 @@ package com.nzzima.secretmessanger.messanger.ui
 import com.nzzima.secretmessanger.chats.domain.FakeConversationRepository
 import com.nzzima.secretmessanger.chats.domain.chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
-import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
+import com.nzzima.secretmessanger.crypto.domain.FakeConversationKeys
 import com.nzzima.secretmessanger.crypto.domain.models.CryptoFailure
 import com.nzzima.secretmessanger.messanger.domain.FakeMessageRepository
 import com.nzzima.secretmessanger.messanger.domain.impl.MessangerInteractorImpl
@@ -36,9 +36,7 @@ class MessangerViewModelTest {
     private val messages = FakeMessageRepository()
 
     /** Диалог без шифрования: расшифровка здесь не проверяется, это дело интерактора. */
-    private val noKeys = object : ConversationKeys {
-        override fun open(convoId: String, uid: String, version: Int, entries: Map<String, String>) = null
-    }
+    private val noKeys = FakeConversationKeys()
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 

@@ -51,4 +51,20 @@ data class Chat(
      * несколько, и выбирать из них одного было бы враньём.
      */
     val companionId: String? get() = if (isGroup) null else members.firstOrNull { it != selfId }
+
+    companion object {
+
+        /**
+         * Идентификатор диалога на двоих — пара uid по алфавиту через подчёркивание.
+         *
+         * Детерминированный намеренно: оба собеседника независимо приходят к одному и тому
+         * же идентификатору, поэтому диалог, открытый из «Контактов», попадает в
+         * существующий, а не заводит второй. У группы состав в идентификатор не
+         * закодируешь, и там он случайный — но групп Android не заводит.
+         *
+         * Формат общий с iOS (`Chat.conversationId`), менять его нельзя.
+         */
+        fun conversationId(first: String, second: String): String =
+            listOf(first, second).sorted().joinToString("_")
+    }
 }

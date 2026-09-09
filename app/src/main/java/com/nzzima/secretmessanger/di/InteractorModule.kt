@@ -7,7 +7,9 @@ import com.nzzima.secretmessanger.auth.domain.impl.AuthenticationInteractorImpl
 import com.nzzima.secretmessanger.auth.domain.impl.ProfileRepairInteractorImpl
 import com.nzzima.secretmessanger.auth.domain.impl.RegistrationInteractorImpl
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
+import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
 import com.nzzima.secretmessanger.chats.domain.impl.ChatsInteractorImpl
+import com.nzzima.secretmessanger.chats.domain.impl.ConversationStarterImpl
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
 import com.nzzima.secretmessanger.contacts.domain.impl.ContactsInteractorImpl
 import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
@@ -56,6 +58,10 @@ val interactorModule = module {
 
     single<ChatsInteractor> {
         ChatsInteractorImpl(get(), get())
+    }
+
+    single<ConversationStarter> {
+        ConversationStarterImpl(get(), get(), get(), get(), get())
     }
 
     single<ContactsInteractor> {

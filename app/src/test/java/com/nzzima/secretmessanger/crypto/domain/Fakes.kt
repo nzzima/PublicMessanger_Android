@@ -1,7 +1,9 @@
 package com.nzzima.secretmessanger.crypto.domain
 
 import android.content.SharedPreferences
+import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
 import com.nzzima.secretmessanger.crypto.domain.api.MasterKeyProvider
+import com.nzzima.secretmessanger.crypto.domain.api.PublicKeyRepository
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 
@@ -83,4 +85,36 @@ class FakeSharedPreferences : SharedPreferences {
     ) = unsupported()
 
     private fun unsupported(): Nothing = throw UnsupportedOperationException("хранилище ключа пишет только строки")
+}
+
+/** Открытые половины в памяти: uid → base64. */
+class FakePublicKeyRepository : PublicKeyRepository {
+
+    val stored = mutableMapOf<String, String>()
+    var publishes = 0
+    var readFails: Throwable? = null
+    var publishFails: Throwable? = null
+
+    override suspend fun published(uid: String): Result<String?> =
+        readFails?.let { Result.failure(it) } ?: Result.success(stored[uid])
+
+    override suspend fun publish(uid: String, publicKey: String): Result<Unit> {
+        publishFails?.let { return Result.failure(it) }
+        publishes++
+        stored[uid] = publicKey
+        return Result.success(Unit)
+    }
+}
+
+/**
+ * Ключей диалогов нет ни у кого.
+ *
+ * Для моделей экранов: расшифровка и раздача — дело интерактора, и подсовывать им живой
+ * крипто-слой значило бы проверять его во второй раз.
+ */
+class FakeConversationKeys : ConversationKeys {
+
+    override fun open(convoId: String, uid: String, version: Int, entries: Map<String, String>): ByteArray? = null
+
+    override fun sealNew(convoId: String, publicKeys: Map<String, String>): Map<String, String>? = null
 }

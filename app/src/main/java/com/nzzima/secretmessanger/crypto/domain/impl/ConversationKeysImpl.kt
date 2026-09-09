@@ -3,6 +3,8 @@ package com.nzzima.secretmessanger.crypto.domain.impl
 import com.nzzima.secretmessanger.crypto.domain.CryptoBox
 import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityKeyStore
+import com.nzzima.secretmessanger.utils.constants.Constants
+import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -34,6 +36,21 @@ class ConversationKeysImpl(private val identityKeys: IdentityKeyStore) : Convers
         return runCatching { CryptoBox.openKey(payload, identityPrivate, context(convoId, version)) }
             .getOrNull()
             ?.also { cache[cacheKey] = it }
+    }
+
+    override fun sealNew(convoId: String, publicKeys: Map<String, String>): Map<String, String>? {
+        val key = CryptoBox.newConversationKey()
+        val version = Constants.FIRST_KEY_VERSION
+
+        return publicKeys.entries.associate { (uid, encoded) ->
+            val recipient = runCatching { Base64.getDecoder().decode(encoded) }.getOrNull()
+                ?: return null
+            val payload = runCatching { CryptoBox.sealKey(key, recipient, context(convoId, version)) }
+                .getOrNull()
+                ?: return null
+
+            entryKey(uid, version) to payload
+        }
     }
 
     /** Ключ записи в карте `convoKeys`: чей ключ и какой версии. */

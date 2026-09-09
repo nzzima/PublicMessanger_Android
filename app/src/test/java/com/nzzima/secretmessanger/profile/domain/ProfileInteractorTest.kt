@@ -1,11 +1,7 @@
 package com.nzzima.secretmessanger.profile.domain
 
-import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.profile.domain.impl.ProfileInteractorImpl
 import com.nzzima.secretmessanger.profile.domain.models.Profile
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -55,17 +51,3 @@ class ProfileInteractorTest {
 }
 
 /** Профиль в памяти; до первого [send] подписчик не получает ничего. */
-private class FakeProfileReader : ProfileReader {
-
-    private val snapshots = MutableSharedFlow<Result<Profile>>(
-        replay = 1,
-        extraBufferCapacity = 8,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST,
-    )
-
-    override fun observe(uid: String): Flow<Result<Profile>> = snapshots
-
-    fun send(profile: Profile) = snapshots.tryEmit(Result.success(profile))
-
-    fun fail(error: Throwable) = snapshots.tryEmit(Result.failure(error))
-}

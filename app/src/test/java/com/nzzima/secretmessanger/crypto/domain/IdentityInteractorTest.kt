@@ -1,7 +1,6 @@
 package com.nzzima.secretmessanger.crypto.domain
 
 import com.nzzima.secretmessanger.crypto.data.impl.IdentityKeyStoreImpl
-import com.nzzima.secretmessanger.crypto.domain.api.PublicKeyRepository
 import com.nzzima.secretmessanger.crypto.domain.impl.IdentityInteractorImpl
 import com.nzzima.secretmessanger.crypto.domain.models.IdentityState
 import java.util.Base64
@@ -135,20 +134,3 @@ class IdentityInteractorTest {
 }
 
 /** [PublicKeyRepository] в памяти. Считает публикации, чтобы ловить лишние. */
-private class FakePublicKeyRepository : PublicKeyRepository {
-
-    val stored = mutableMapOf<String, String>()
-    var publishes = 0
-    var readFails: Throwable? = null
-    var publishFails: Throwable? = null
-
-    override suspend fun published(uid: String): Result<String?> =
-        readFails?.let { Result.failure(it) } ?: Result.success(stored[uid])
-
-    override suspend fun publish(uid: String, publicKey: String): Result<Unit> {
-        publishFails?.let { return Result.failure(it) }
-        publishes++
-        stored[uid] = publicKey
-        return Result.success(Unit)
-    }
-}

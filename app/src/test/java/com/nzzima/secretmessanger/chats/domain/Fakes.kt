@@ -61,6 +61,29 @@ class FakeConversationRepository : ConversationRepository {
     /** Отдаёт подписчикам отказ по шапке. */
     fun failChat(error: Throwable) = single.tryEmit(Result.failure(error))
 
+    /** Шапки, лежащие в базе: идентификатор диалога → сам диалог. */
+    val stored = mutableMapOf<String, Chat>()
+
+    /** Заведённое через [create], в порядке записи. */
+    val created = mutableListOf<Chat>()
+
+    /** Чем отказывает чтение шапки; `null` — читается. */
+    var readFails: Throwable? = null
+
+    /** Чем отказывает заведение; `null` — заводится. */
+    var createFails: Throwable? = null
+
+    override suspend fun existing(convoId: String, selfId: String): Result<Chat?> =
+        readFails?.let { Result.failure(it) } ?: Result.success(stored[convoId])
+
+    override suspend fun create(chat: Chat): Result<Unit> {
+        createFails?.let { return Result.failure(it) }
+
+        created += chat
+        stored[chat.id] = chat
+        return Result.success(Unit)
+    }
+
     private companion object {
         const val BUFFER = 8
     }

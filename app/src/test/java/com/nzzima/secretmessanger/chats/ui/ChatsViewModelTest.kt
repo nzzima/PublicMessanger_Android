@@ -4,7 +4,7 @@ import com.nzzima.secretmessanger.chats.domain.FakeConversationRepository
 import com.nzzima.secretmessanger.chats.domain.chat
 import com.nzzima.secretmessanger.chats.domain.header
 import com.nzzima.secretmessanger.chats.domain.impl.ChatsInteractorImpl
-import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
+import com.nzzima.secretmessanger.crypto.domain.FakeConversationKeys
 import com.nzzima.secretmessanger.session.domain.FakeSessionRepository
 import com.nzzima.secretmessanger.session.domain.impl.SessionInteractorImpl
 import com.nzzima.secretmessanger.session.domain.models.Session
@@ -31,9 +31,7 @@ class ChatsViewModelTest {
     private val conversations = FakeConversationRepository()
 
     /** Ключей диалогов ни у кого нет: превью здесь не проверяется, это дело интерактора. */
-    private val noKeys = object : ConversationKeys {
-        override fun open(convoId: String, uid: String, version: Int, entries: Map<String, String>) = null
-    }
+    private val noKeys = FakeConversationKeys()
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 

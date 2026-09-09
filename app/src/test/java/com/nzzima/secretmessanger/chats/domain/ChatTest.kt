@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.chats.domain
 
+import com.nzzima.secretmessanger.chats.domain.models.Chat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -41,5 +42,24 @@ class ChatTest {
         assertFalse(chat().isGroup)
 
         assertNull(chat(members = listOf("uid-1", "uid-2", "uid-3")).companionId)
+    }
+
+    @Test
+    fun `идентификатор диалога на двоих не зависит от того, кто его заводит`() {
+        assertEquals(
+            Chat.conversationId("uid-2", "uid-1"),
+            Chat.conversationId("uid-1", "uid-2"),
+        )
+    }
+
+    @Test
+    fun `идентификатор — пара uid по алфавиту через подчёркивание`() {
+        assertEquals("uid-1_uid-2", Chat.conversationId("uid-2", "uid-1"))
+    }
+
+    @Test
+    fun `диалог без ключей считается незашифрованным`() {
+        assertFalse(chat(convoKeys = emptyMap()).isEncrypted)
+        assertTrue(chat(convoKeys = mapOf("uid-1_1" to "запись")).isEncrypted)
     }
 }
