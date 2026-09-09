@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -29,7 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nzzima.secretmessanger.messanger.domain.models.Reply
-import com.nzzima.secretmessanger.ui.components.BackIcon
+import com.nzzima.secretmessanger.ui.components.BackButton
 import com.nzzima.secretmessanger.ui.components.FailureNotice
 import com.nzzima.secretmessanger.ui.components.Field
 import com.nzzima.secretmessanger.ui.components.Notice
@@ -70,12 +70,15 @@ import org.koin.core.parameter.parametersOf
  * даёт ноль: вычитание не уходит ниже нуля.
  *
  * @param convoId диалог; приходит аргументом назначения.
- * @param onBack возврат к списку диалогов.
+ * @param backTitle имя экрана, с которого пришли: в переписку заходят и из «Чатов», и из
+ *   профиля собеседника.
+ * @param onBack возврат туда же.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessangerScreen(
     convoId: String,
+    backTitle: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MessangerViewModel = koinViewModel { parametersOf(convoId) },
@@ -86,7 +89,7 @@ fun MessangerScreen(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Top),
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = (state as? MessangerUiState.Content)?.title.orEmpty(),
@@ -94,12 +97,8 @@ fun MessangerScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(BackIcon, contentDescription = Constants.BACK, tint = Accent)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
+                navigationIcon = { BackButton(backTitle, onBack) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
                 ),

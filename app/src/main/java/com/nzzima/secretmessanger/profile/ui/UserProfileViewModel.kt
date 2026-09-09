@@ -21,7 +21,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * обновится без перезахода.
  *
  * @param companionId чей профиль показываем.
- * @param fallbackLogin имя из списка контактов; держит заголовок, пока профиль не пришёл.
+ * @param fallbackLogin имя из списка контактов; держит экран, пока профиль не пришёл.
  */
 class UserProfileViewModel(
     private val companionId: String,
@@ -99,22 +99,22 @@ class UserProfileViewModel(
                 snapshot
                     .onSuccess { profile ->
                         userProfileScreenState.update { current ->
-                            // Заголовок ведёт профиль, как только тот пришёл: список
-                            // контактов мог устареть на переименование.
-                            val title = profile.login.ifEmpty { fallbackLogin }
+                            // Имя ведёт профиль, как только тот пришёл: список контактов
+                            // мог устареть на переименование.
+                            val name = profile.login.ifEmpty { fallbackLogin }
 
                             if (current is UserProfileUiState.Content) {
                                 // Начатое заведение и показанный отказ переживают новый
                                 // снимок: собеседник мог поправить заметку в этот самый миг.
-                                current.copy(title = title, profile = profile)
+                                current.copy(name = name, profile = profile)
                             } else {
-                                UserProfileUiState.Content(title, profile)
+                                UserProfileUiState.Content(name, profile)
                             }
                         }
                     }
                     .onFailure { error ->
                         userProfileScreenState.value = UserProfileUiState.Failed(
-                            title = fallbackLogin,
+                            name = fallbackLogin,
                             message = error.message ?: Constants.PROFILE_MISSING,
                         )
                         // Отказ Firestore не отличает мёртвую сессию от обрыва связи, а

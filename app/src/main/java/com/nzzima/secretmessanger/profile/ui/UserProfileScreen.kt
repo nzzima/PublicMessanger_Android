@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nzzima.secretmessanger.profile.domain.models.Profile
-import com.nzzima.secretmessanger.ui.components.BackIcon
+import com.nzzima.secretmessanger.ui.components.BackButton
 import com.nzzima.secretmessanger.ui.components.FailureNotice
 import com.nzzima.secretmessanger.ui.components.WriteIcon
 import com.nzzima.secretmessanger.ui.theme.Accent
@@ -46,6 +46,9 @@ import org.koin.core.parameter.parametersOf
 /**
  * Экран чужого профиля.
  *
+ * Заголовка в шапке нет намеренно: имя человека написано в теле экрана, и второй раз ему
+ * там делать нечего. В шапке остаются возврат и «Написать».
+ *
  * Показывает **только публичные поля** — логин, имя, заметку. Ни почты, ни идентификатора
  * здесь нет: почта это личные контактные данные, а идентификатор в чужом профиле —
  * технический шум. Граница та же, что у `ProfileInfo` на iOS.
@@ -54,6 +57,7 @@ import org.koin.core.parameter.parametersOf
  *
  * @param userId чей профиль.
  * @param login имя из списка контактов; держит заголовок, пока профиль не пришёл.
+ * @param backTitle имя экрана, с которого пришли.
  * @param onWrite переход в переписку с этим человеком.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,6 +65,7 @@ import org.koin.core.parameter.parametersOf
 fun UserProfileScreen(
     userId: String,
     login: String,
+    backTitle: String,
     onBack: () -> Unit,
     onWrite: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -81,12 +86,8 @@ fun UserProfileScreen(
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Top),
         topBar = {
             TopAppBar(
-                title = { Text(state.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(BackIcon, contentDescription = Constants.BACK, tint = Accent)
-                    }
-                },
+                title = {},
+                navigationIcon = { BackButton(backTitle, onBack) },
                 actions = {
                     // Кнопка живёт в шапке, как на iOS, и доступна только с прочитанным
                     // профилем: без него неизвестно имя, которое уйдёт в шапку диалога.
@@ -102,14 +103,15 @@ fun UserProfileScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
                 ),
             )
         },
     ) { insets ->
         Box(modifier = Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.Center) {
             when (val current = state) {
-                is UserProfileUiState.Loading -> CircularProgressIndicator()
+                // Имя показывается и в ожидании: оно известно из списка контактов, и
+                // экран не должен открываться безымянным.
+                is UserProfileUiState.Loading -> LoadingBody(current.name)
 
                 is UserProfileUiState.Content -> UserProfileBody(current.profile, current.error)
 
@@ -120,18 +122,24 @@ fun UserProfileScreen(
 }
 
 @Composable
+private fun LoadingBody(name: String) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        PersonName(name)
+
+        CircularProgressIndicator(modifier = Modifier.padding(top = 32.dp))
+    }
+}
+
+@Composable
 private fun UserProfileBody(profile: Profile, error: String?) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            text = profile.name.ifEmpty { profile.login },
-            color = Ink,
-            fontSize = 21.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-        )
+        PersonName(profile.name.ifEmpty { profile.login })
 
         Column(
             modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
@@ -155,4 +163,18 @@ private fun UserProfileBody(profile: Profile, error: String?) {
             )
         }
     }
+}
+
+/** Имя человека — единственное место, где оно написано на этом экране. */
+@Composable
+private fun PersonName(name: String) {
+    Text(
+        text = name,
+        color = Ink,
+        fontSize = 21.sp,
+        fontWeight = FontWeight.SemiBold,
+        textAlign = TextAlign.Center,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+    )
 }

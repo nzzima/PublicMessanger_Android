@@ -59,12 +59,12 @@ class UserProfileViewModelTest {
     }
 
     @Test
-    fun `до профиля заголовок держит имя из списка контактов`() = runTest(dispatcher) {
+    fun `до профиля экран держит имя из списка контактов`() = runTest(dispatcher) {
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(model.state() is UserProfileUiState.Loading)
-        assertEquals("companion", model.state().title)
+        assertEquals("companion", model.state().name)
     }
 
     @Test
@@ -75,22 +75,22 @@ class UserProfileViewModelTest {
     }
 
     @Test
-    fun `переименование в профиле меняет заголовок`() = runTest(dispatcher) {
+    fun `переименование в профиле меняет имя на экране`() = runTest(dispatcher) {
         val model = opened()
 
         profiles.send(profile(login = "renamed"))
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals("renamed", model.state().title)
+        assertEquals("renamed", model.state().name)
     }
 
     @Test
-    fun `безымянный профиль оставляет заголовок из списка`() = runTest(dispatcher) {
+    fun `безымянный профиль оставляет имя из списка`() = runTest(dispatcher) {
         profiles.send(profile(login = "", name = ""))
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals("companion", model.state().title)
+        assertEquals("companion", model.state().name)
     }
 
     @Test
@@ -197,7 +197,7 @@ class UserProfileViewModelTest {
         val state = model.state() as UserProfileUiState.Failed
 
         assertEquals("профиля нет", state.message)
-        assertEquals("заголовок остаётся известным", "companion", state.title)
+        assertEquals("имя остаётся известным", "companion", state.name)
         assertEquals(1, sessions.revalidations)
     }
 

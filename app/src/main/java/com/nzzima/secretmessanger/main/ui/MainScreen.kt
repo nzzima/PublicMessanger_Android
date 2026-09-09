@@ -13,6 +13,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -108,6 +109,7 @@ fun MainScreen(
                 UserProfileScreen(
                     userId = entry.arguments?.getString(Constants.USER_ID_ARGUMENT).orEmpty(),
                     login = entry.arguments?.getString(Constants.LOGIN_ARGUMENT).orEmpty(),
+                    backTitle = remember { navController.backTitle() },
                     onBack = { navController.popBackStack() },
                     onWrite = { convoId -> navController.navigate(messangerRoute(convoId)) },
                 )
@@ -118,6 +120,7 @@ fun MainScreen(
             ) { entry ->
                 MessangerScreen(
                     convoId = entry.arguments?.getString(Constants.CONVO_ID_ARGUMENT).orEmpty(),
+                    backTitle = remember { navController.backTitle() },
                     onBack = { navController.popBackStack() },
                 )
             }
@@ -127,6 +130,22 @@ fun MainScreen(
 
 /** Назначение переписки: диалог задаётся аргументом пути. */
 private fun messangerRoute(convoId: String) = "${Constants.MESSANGER_ROUTE}/$convoId"
+
+/**
+ * Имя экрана, с которого пришли, — подпись кнопки возврата.
+ *
+ * Вкладки называются собой: «Контакты», «Чаты», «Профиль». Всё остальное — «Назад»: у
+ * профиля собеседника имя совпадает с заголовком переписки, и подпись повторяла бы то, что
+ * и так написано по центру.
+ *
+ * Читается один раз, при первой сборке экрана: дальше стек под ним не меняется, а
+ * пересборка с уже другим `previousBackStackEntry` подменила бы подпись на ходу.
+ */
+private fun NavHostController.backTitle(): String {
+    val route = previousBackStackEntry?.destination?.route
+
+    return Tab.entries.firstOrNull { it.route == route }?.title ?: Constants.BACK
+}
 
 /**
  * Назначение чужого профиля: аккаунт в пути, имя из списка контактов — запросом.

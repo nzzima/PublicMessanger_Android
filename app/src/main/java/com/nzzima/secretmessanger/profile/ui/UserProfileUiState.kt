@@ -5,15 +5,17 @@ import com.nzzima.secretmessanger.profile.domain.models.Profile
 /**
  * Состояние экрана чужого профиля.
  *
- * Заголовок есть у всех состояний, включая ожидание: имя приходит из списка контактов
- * вместе с переходом, и экран не должен открываться безымянным.
+ * Имя известно во всех состояниях, включая ожидание: оно приходит из списка контактов
+ * вместе с переходом, и экран не должен открываться безымянным. В шапке его нет — там
+ * только возврат и «Написать»: имя человека уже написано в теле экрана, и второй раз его
+ * показывать незачем.
  */
 sealed interface UserProfileUiState {
 
-    val title: String
+    val name: String
 
     /** Профиль ещё не пришёл: показывается ожидание, а не пустые поля. */
-    data class Loading(override val title: String) : UserProfileUiState
+    data class Loading(override val name: String) : UserProfileUiState
 
     /**
      * Профиль прочитан.
@@ -24,7 +26,7 @@ sealed interface UserProfileUiState {
      * @property error причина, по которой диалог не завёлся.
      */
     data class Content(
-        override val title: String,
+        override val name: String,
         val profile: Profile,
         val isOpening: Boolean = false,
         val opened: String? = null,
@@ -32,5 +34,5 @@ sealed interface UserProfileUiState {
     ) : UserProfileUiState
 
     /** Профиля нет или чтение отказало. [message] показывается на экране. */
-    data class Failed(override val title: String, val message: String) : UserProfileUiState
+    data class Failed(override val name: String, val message: String) : UserProfileUiState
 }
