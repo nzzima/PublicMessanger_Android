@@ -10,4 +10,13 @@ sealed class CryptoFailure(message: String) : Exception(message) {
 
     /** Ключ не подошёл: тег AES-GCM не сошёлся либо контекст HKDF другой. */
     data object WrongKey : CryptoFailure(Constants.WRONG_KEY)
+
+    /**
+     * Ключа диалога на этом устройстве нет: запись в `convoKeys` нам не выдана либо
+     * запечатана для другой пары ключей.
+     *
+     * Отличается от [WrongKey] тем, что шифровать нечем **до** всякой операции, а не
+     * получилось расшифровать: отправлять в такой диалог нечего.
+     */
+    data object NoKey : CryptoFailure(Constants.NO_CONVERSATION_KEY)
 }

@@ -64,7 +64,7 @@ class ChatsInteractorTest {
 
         val conversation = conversations().single()
 
-        assertEquals(Constants.PREVIEW_UNREADABLE, conversation.preview)
+        assertEquals(Constants.UNREADABLE, conversation.preview)
         assertEquals("диалог обязан остаться в списке", "uid-1_uid-2", conversation.chat.id)
     }
 
@@ -76,7 +76,7 @@ class ChatsInteractorTest {
             listOf(header(chat = chat, lastMessage = CryptoBox.seal("секрет", otherKey), encrypted = true)),
         )
 
-        assertEquals(Constants.PREVIEW_UNREADABLE, conversations().single().preview)
+        assertEquals(Constants.UNREADABLE, conversations().single().preview)
     }
 
     @Test
@@ -84,7 +84,7 @@ class ChatsInteractorTest {
         val (chat, _) = sealedChat()
         conversations.send(listOf(header(chat = chat, lastMessage = "не base64 вовсе", encrypted = true)))
 
-        assertEquals(Constants.PREVIEW_UNREADABLE, conversations().single().preview)
+        assertEquals(Constants.UNREADABLE, conversations().single().preview)
     }
 
     @Test

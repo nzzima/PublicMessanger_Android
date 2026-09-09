@@ -42,6 +42,25 @@ class FakeConversationRepository : ConversationRepository {
     /** Отдаёт подписчикам отказ. */
     fun fail(error: Throwable) = snapshots.tryEmit(Result.failure(error))
 
+    private val single = MutableSharedFlow<Result<Chat>>(
+        replay = 1,
+        extraBufferCapacity = BUFFER,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** Идентификатор диалога, с которым запросили последнюю подписку на шапку. */
+    var requestedChat: String? = null
+        private set
+
+    override fun observeChat(convoId: String, selfId: String): Flow<Result<Chat>> =
+        single.onStart { requestedChat = convoId }
+
+    /** Отдаёт подписчикам очередную шапку. */
+    fun sendChat(chat: Chat) = single.tryEmit(Result.success(chat))
+
+    /** Отдаёт подписчикам отказ по шапке. */
+    fun failChat(error: Throwable) = single.tryEmit(Result.failure(error))
+
     private companion object {
         const val BUFFER = 8
     }

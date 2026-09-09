@@ -1,6 +1,9 @@
 package com.nzzima.secretmessanger.main.ui
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.nzzima.secretmessanger.ui.components.ChatsIcon
+import com.nzzima.secretmessanger.ui.components.ContactsIcon
+import com.nzzima.secretmessanger.ui.components.ProfileIcon
 import com.nzzima.secretmessanger.utils.constants.Constants
 
 /**

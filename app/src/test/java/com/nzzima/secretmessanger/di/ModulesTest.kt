@@ -19,6 +19,9 @@ import com.nzzima.secretmessanger.crypto.domain.api.IdentityInteractor
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityKeyStore
 import com.nzzima.secretmessanger.crypto.domain.api.MasterKeyProvider
 import com.nzzima.secretmessanger.crypto.domain.api.PublicKeyRepository
+import com.nzzima.secretmessanger.messanger.domain.api.MessageRepository
+import com.nzzima.secretmessanger.messanger.domain.api.MessangerInteractor
+import com.nzzima.secretmessanger.messanger.ui.MessangerViewModel
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.session.domain.api.SessionCloser
@@ -27,6 +30,8 @@ import com.nzzima.secretmessanger.session.domain.api.SessionReader
 import com.nzzima.secretmessanger.session.domain.api.SessionValidator
 import org.junit.Test
 import org.koin.core.annotation.KoinExperimentalAPI
+import org.koin.test.verify.definition
+import org.koin.test.verify.injectedParameters
 import org.koin.test.verify.verify
 
 /**
@@ -41,6 +46,9 @@ import org.koin.test.verify.verify
  *
  * `dataModule` не проверяется: он отдаёт клиентов Firebase, созданных фабриками SDK, а
  * проверка читает конструкторы объявленных типов и требует их аргументы как зависимости.
+ *
+ * `injections` перечисляет то, что приходит параметром вызова, а не из графа: диалог у
+ * модели переписки задаётся аргументом назначения.
  */
 @OptIn(KoinExperimentalAPI::class)
 class ModulesTest {
@@ -69,6 +77,7 @@ class ModulesTest {
                 PublicKeyRepository::class,
                 ConversationRepository::class,
                 ConversationKeys::class,
+                MessageRepository::class,
                 ContactsRepository::class,
                 ProfileReader::class,
             ),
@@ -84,7 +93,9 @@ class ModulesTest {
                 ChatsInteractor::class,
                 ContactsInteractor::class,
                 ProfileInteractor::class,
+                MessangerInteractor::class,
             ),
+            injections = injectedParameters(definition<MessangerViewModel>(String::class)),
         )
     }
 }

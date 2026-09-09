@@ -12,6 +12,7 @@ object Constants {
     const val LOGINS_COLLECTION = "logins"
     const val USERS_COLLECTION = "users"
     const val CONVERSATION_COLLECTION = "conversation"
+    const val MESSAGES_COLLECTION = "messages"
 
     const val UID_FIELD = "uid"
     const val LOGIN_FIELD = "login"
@@ -29,6 +30,17 @@ object Constants {
     const val LAST_VERSION_FIELD = "lastV"
     const val DATE_FIELD = "date"
 
+    const val SENDER_ID_FIELD = "senderId"
+    const val MESSAGE_FIELD = "message"
+    const val ENCRYPTED_FIELD = "enc"
+    const val VERSION_FIELD = "v"
+    const val TYPE_FIELD = "type"
+
+    const val VOICE_TYPE = "audio"
+    const val PHOTO_TYPE = "image"
+    const val LOCATION_TYPE = "location"
+    const val KEY_NOTICE_TYPE = "keyRotated"
+
     const val IDENTITY_PREFERENCES = "com.nzzima.secretmessanger.identity"
     const val IDENTITY_ENTRY_PREFIX = "identity."
     const val MASTER_KEY_ALIAS = "com.nzzima.secretmessanger.master"
@@ -43,12 +55,16 @@ object Constants {
     const val CONTACTS_ROUTE = "contacts"
     const val CHATS_ROUTE = "chats"
     const val PROFILE_ROUTE = "profile"
+    const val MESSANGER_ROUTE = "messanger"
+    const val CONVO_ID_ARGUMENT = "convoId"
 
     const val LOGIN_MIN_LENGTH = 3
     const val LOGIN_MAX_LENGTH = 20
     const val PASSWORD_MIN_LENGTH = 6
 
     const val SUBMIT_TIMEOUT_MS = 20_000L
+
+    const val MESSAGE_WINDOW = 50L
 
     const val EMAIL_TAKEN = "Эта почта уже занята"
     const val WEAK_PASSWORD = "Пароль слишком простой"
@@ -76,7 +92,18 @@ object Constants {
 
     const val CHATS_TITLE = "Чаты"
     const val CHATS_EMPTY = "Диалогов пока нет"
-    const val PREVIEW_UNREADABLE = "🔒 Сообщение не расшифровано"
+    const val UNREADABLE = "🔒 Сообщение не расшифровано"
+
+    const val MESSAGES_EMPTY = "Здесь пока ничего не написано"
+    const val MESSAGE_PLACEHOLDER = "Сообщение"
+    const val SEND_MESSAGE = "Отправить"
+    const val BACK = "Назад"
+    const val VOICE_MESSAGE = "🎤 Голосовое сообщение"
+    const val PHOTO_MESSAGE = "📷 Фото"
+    const val LOCATION_MESSAGE = "📍 Геопозиция"
+    const val KEY_ROTATED = "ключ обновлён"
+    const val NO_CONVERSATION_KEY = "Ключ этого диалога вам ещё не выдан"
+    const val CONVERSATION_GONE = "Диалог удалён"
 
     const val CONTACTS_TITLE = "Контакты"
     const val CONTACTS_EMPTY = "Кроме вас здесь пока никого нет"

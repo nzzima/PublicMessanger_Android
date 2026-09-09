@@ -1,5 +1,7 @@
 package com.nzzima.secretmessanger.chats.domain.api
 
+import com.nzzima.secretmessanger.chats.domain.models.Chat
+import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
 import com.nzzima.secretmessanger.chats.domain.models.ConversationHeader
 import kotlinx.coroutines.flow.Flow
 
@@ -20,4 +22,19 @@ interface ConversationRepository {
      * нужна новая подписка.
      */
     fun observeHeaders(selfId: String): Flow<Result<List<ConversationHeader>>>
+
+    /**
+     * Один диалог [convoId] — свежим значением на каждое изменение его шапки.
+     *
+     * Слушается, а не читается однократно: состав, имена участников и ключи меняются при
+     * открытом экране — добавленному участнику ключ дозапечатывают, и приезжает он сюда.
+     *
+     * Последняя реплика в [Chat] не входит: экрану переписки она не нужна, там есть сами
+     * реплики.
+     *
+     * Отказ приходит последним значением, после чего поток закрывается — как и у
+     * [observeHeaders]. Исчезнувшая шапка приходит [ConversationGone]: диалог стёрли, и
+     * повторная подписка ничего не вернёт.
+     */
+    fun observeChat(convoId: String, selfId: String): Flow<Result<Chat>>
 }

@@ -16,6 +16,8 @@ import com.nzzima.secretmessanger.crypto.data.impl.IdentityKeyStoreImpl
 import com.nzzima.secretmessanger.crypto.data.impl.PublicKeyRepositoryImpl
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityKeyStore
 import com.nzzima.secretmessanger.crypto.domain.api.PublicKeyRepository
+import com.nzzima.secretmessanger.messanger.data.impl.MessageRepositoryImpl
+import com.nzzima.secretmessanger.messanger.domain.api.MessageRepository
 import com.nzzima.secretmessanger.profile.data.impl.ProfileReaderImpl
 import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.session.data.impl.SessionRepositoryImpl
@@ -63,6 +65,10 @@ val repositoryModule = module {
 
     single<ContactsRepository> {
         ContactsRepositoryImpl(get())
+    }
+
+    single<MessageRepository> {
+        MessageRepositoryImpl(get())
     }
 
     single<ProfileReader> {

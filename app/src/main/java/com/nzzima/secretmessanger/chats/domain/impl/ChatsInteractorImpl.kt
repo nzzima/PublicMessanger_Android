@@ -4,7 +4,7 @@ import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.chats.domain.models.Conversation
 import com.nzzima.secretmessanger.chats.domain.models.ConversationHeader
-import com.nzzima.secretmessanger.crypto.domain.CryptoBox
+import com.nzzima.secretmessanger.chats.domain.openText
 import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
 import com.nzzima.secretmessanger.utils.constants.Constants
 import kotlinx.coroutines.flow.Flow
@@ -34,15 +34,12 @@ class ChatsInteractorImpl(
     /**
      * Открытый текст последней реплики.
      *
-     * Нечитаемая реплика заменяется [Constants.PREVIEW_UNREADABLE] и строку из списка не
+     * Нечитаемая реплика заменяется [Constants.UNREADABLE] и строку из списка не
      * убирает: диалог существует, и молчать о нём хуже, чем показать замок.
      */
     private fun ConversationHeader.preview(): String {
         if (!encrypted) return lastMessage
 
-        val key = conversationKeys.open(chat.id, chat.selfId, version, chat.convoKeys)
-            ?: return Constants.PREVIEW_UNREADABLE
-
-        return runCatching { CryptoBox.open(lastMessage, key) }.getOrDefault(Constants.PREVIEW_UNREADABLE)
+        return conversationKeys.openText(chat, lastMessage, version) ?: Constants.UNREADABLE
     }
 }
