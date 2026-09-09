@@ -3,6 +3,7 @@ package com.nzzima.secretmessanger.messanger.ui
 import com.nzzima.secretmessanger.chats.domain.FakeConversationRepository
 import com.nzzima.secretmessanger.chats.domain.chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
+import com.nzzima.secretmessanger.chats.domain.models.Moment
 import com.nzzima.secretmessanger.crypto.domain.FakeConversationKeys
 import com.nzzima.secretmessanger.crypto.domain.models.CryptoFailure
 import com.nzzima.secretmessanger.messanger.domain.FakeMessageRepository
@@ -52,12 +53,15 @@ class MessangerViewModelTest {
 
     private fun MessangerViewModel.content() = state() as MessangerUiState.Content
 
-    /** Открытая переписка: шапка и одна чужая реплика уже пришли. */
+    /** Открытая переписка: шапка и одна чужая реплика уже пришли, экран на глазах. */
     private fun opened(): MessangerViewModel {
         conversations.sendChat(chat())
         messages.send(listOf(message(body = "привет")))
 
-        return viewModel().also { dispatcher.scheduler.advanceUntilIdle() }
+        return viewModel().also {
+            it.onVisible()
+            dispatcher.scheduler.advanceUntilIdle()
+        }
     }
 
     @Test
@@ -184,6 +188,63 @@ class MessangerViewModelTest {
         assertEquals(Constants.CONVERSATION_GONE, state.message)
         assertFalse("возвращать нечего", state.canRetry)
         assertEquals("сессия здесь ни при чём", 0, sessions.revalidations)
+    }
+
+    @Test
+    fun `открытый экран отмечает прочтение по последней чужой реплике`() = runTest(dispatcher) {
+        conversations.sendChat(chat())
+        messages.send(listOf(message(senderId = "uid-2", date = Moment(10, 250))))
+        val model = viewModel()
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(Triple("uid-1_uid-2", "uid-1", Moment(10, 250)), conversations.receipts.single())
+    }
+
+    @Test
+    fun `невидимый экран прочтение не отмечает`() = runTest(dispatcher) {
+        conversations.sendChat(chat())
+        messages.send(listOf(message(senderId = "uid-2", date = Moment(10, 0))))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue("свёрнутое приложение не читает", conversations.receipts.isEmpty())
+    }
+
+    @Test
+    fun `экран вернулся на глаза — отмечает то, что накопилось`() = runTest(dispatcher) {
+        conversations.sendChat(chat())
+        messages.send(listOf(message(senderId = "uid-2", date = Moment(10, 0))))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(Moment(10, 0), conversations.receipts.single().third)
+    }
+
+    @Test
+    fun `ушедший с глаз экран новые реплики прочитанными не считает`() = runTest(dispatcher) {
+        val model = opened()
+        conversations.receipts.clear()
+
+        model.onHidden()
+        messages.send(listOf(message(id = "m-2", senderId = "uid-2", date = Moment(20, 0))))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(conversations.receipts.isEmpty())
+    }
+
+    @Test
+    fun `свои реплики прочтение не отмечают`() = runTest(dispatcher) {
+        conversations.sendChat(chat())
+        messages.send(listOf(message(senderId = "uid-1", date = Moment(10, 0))))
+        val model = viewModel()
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue("отмечаться нечем: чужих реплик нет", conversations.receipts.isEmpty())
     }
 
     @Test

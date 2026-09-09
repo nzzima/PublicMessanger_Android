@@ -1,12 +1,15 @@
 package com.nzzima.secretmessanger.chats.data.impl
 
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.SetOptions
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
 import com.nzzima.secretmessanger.chats.domain.models.ConversationHeader
+import com.nzzima.secretmessanger.chats.domain.models.Moment
 import com.nzzima.secretmessanger.utils.constants.Constants
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -83,6 +86,16 @@ class ConversationRepositoryImpl(private val firestore: FirebaseFirestore) : Con
         if (error.isPermissionDenied()) null else throw error
     }
 
+    override suspend fun markRead(convoId: String, uid: String, upTo: Moment): Result<Unit> = runCatching {
+        firestore.collection(Constants.CONVERSATION_COLLECTION)
+            .document(convoId)
+            .set(
+                mapOf(Constants.READ_UP_TO_FIELD to mapOf(uid to upTo.toTimestamp())),
+                SetOptions.merge(),
+            )
+            .await()
+    }
+
     override suspend fun create(chat: Chat): Result<Unit> = runCatching {
         firestore.collection(Constants.CONVERSATION_COLLECTION)
             .document(chat.id)
@@ -130,8 +143,17 @@ private fun DocumentSnapshot.toChat(selfId: String): Chat? {
         selfId = selfId,
         convoKeys = get(Constants.CONVO_KEYS_FIELD).asStringMap(),
         keyVersion = getLong(Constants.KEY_VERSION_FIELD)?.toInt() ?: 0,
+        readUpTo = get(Constants.READ_UP_TO_FIELD).asMomentMap(),
     )
 }
+
+/** Карта отметок прочтения из поля документа; записи чужих типов отбрасываются. */
+private fun Any?.asMomentMap(): Map<String, Moment> = (this as? Map<*, *>)
+    ?.mapNotNull { (key, value) ->
+        if (key is String && value is Timestamp) key to value.toMoment() else null
+    }
+    ?.toMap()
+    .orEmpty()
 
 /** Отказала ли операция по правам, а не по связи. */
 private fun Throwable.isPermissionDenied(): Boolean =

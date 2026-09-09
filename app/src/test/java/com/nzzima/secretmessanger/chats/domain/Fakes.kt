@@ -3,6 +3,7 @@ package com.nzzima.secretmessanger.chats.domain
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationHeader
+import com.nzzima.secretmessanger.chats.domain.models.Moment
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -76,6 +77,14 @@ class FakeConversationRepository : ConversationRepository {
     override suspend fun existing(convoId: String, selfId: String): Result<Chat?> =
         readFails?.let { Result.failure(it) } ?: Result.success(stored[convoId])
 
+    /** Отметки прочтения: диалог, чья отметка и докуда — в порядке записи. */
+    val receipts = mutableListOf<Triple<String, String, Moment>>()
+
+    override suspend fun markRead(convoId: String, uid: String, upTo: Moment): Result<Unit> {
+        receipts += Triple(convoId, uid, upTo)
+        return Result.success(Unit)
+    }
+
     override suspend fun create(chat: Chat): Result<Unit> {
         createFails?.let { return Result.failure(it) }
 
@@ -97,6 +106,7 @@ fun chat(
     logins: Map<String, String> = mapOf("uid-1" to "self", "uid-2" to "companion"),
     convoKeys: Map<String, String> = emptyMap(),
     keyVersion: Int = 1,
+    readUpTo: Map<String, Moment> = emptyMap(),
 ) = Chat(
     id = id,
     members = members,
@@ -105,6 +115,7 @@ fun chat(
     selfId = selfId,
     convoKeys = convoKeys,
     keyVersion = keyVersion,
+    readUpTo = readUpTo,
 )
 
 /** Шапка с открытой последней репликой; шифрованные собираются в самих проверках. */

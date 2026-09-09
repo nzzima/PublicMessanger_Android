@@ -4,6 +4,7 @@ import com.nzzima.secretmessanger.chats.domain.FakeConversationRepository
 import com.nzzima.secretmessanger.chats.domain.chat
 import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
+import com.nzzima.secretmessanger.chats.domain.models.Moment
 import com.nzzima.secretmessanger.crypto.data.impl.IdentityKeyStoreImpl
 import com.nzzima.secretmessanger.crypto.domain.CryptoBox
 import com.nzzima.secretmessanger.crypto.domain.FakeMasterKeyProvider
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -195,6 +197,77 @@ class MessangerInteractorTest {
         messages.send(listOf(message()))
 
         assertTrue("тип отказа обязан дойти до экрана", failure() is ConversationGone)
+    }
+
+    @Test
+    fun `своя реплика прочитана, когда собеседник дочитал до неё`() = runTest {
+        conversations.sendChat(chat(readUpTo = mapOf("uid-2" to Moment(10, 0))))
+        messages.send(
+            listOf(
+                message(id = "m-1", senderId = "uid-1", date = Moment(9, 0)),
+                message(id = "m-2", senderId = "uid-1", date = Moment(11, 0)),
+            ),
+        )
+
+        assertEquals(listOf(true, false), replies().map { it.read })
+    }
+
+    @Test
+    fun `чужая реплика не помечается прочитанной никогда`() = runTest {
+        conversations.sendChat(chat(readUpTo = mapOf("uid-1" to Moment(99, 0), "uid-2" to Moment(99, 0))))
+        messages.send(listOf(message(senderId = "uid-2", date = Moment(9, 0))))
+
+        assertFalse(replies().single().read)
+    }
+
+    @Test
+    fun `отмечаться нужно по последней чужой реплике, а не по последней вообще`() = runTest {
+        conversations.sendChat(chat())
+        messages.send(
+            listOf(
+                message(id = "m-1", senderId = "uid-2", date = Moment(9, 0)),
+                message(id = "m-2", senderId = "uid-2", date = Moment(10, 250)),
+                message(id = "m-3", senderId = "uid-1", date = Moment(11, 0)),
+            ),
+        )
+
+        assertEquals(Moment(10, 250), dialogue().lastIncoming)
+    }
+
+    @Test
+    fun `в диалоге из одних своих реплик отмечаться нечем`() = runTest {
+        conversations.sendChat(chat())
+        messages.send(listOf(message(senderId = "uid-1")))
+
+        assertNull(dialogue().lastIncoming)
+    }
+
+    @Test
+    fun `отметка уходит в базу той же величиной, с наносекундами`() = runTest {
+        val upTo = Moment(1_788_952_430, 123_456_789)
+
+        assertTrue(interactor.markRead(chat(), upTo).isSuccess)
+
+        assertEquals(Triple("uid-1_uid-2", "uid-1", upTo), conversations.receipts.single())
+    }
+
+    @Test
+    fun `отметка не переписывается, если уже стоит там же или дальше`() = runTest {
+        val marked = chat(readUpTo = mapOf("uid-1" to Moment(10, 500)))
+
+        assertTrue(interactor.markRead(marked, Moment(10, 500)).isSuccess)
+        assertTrue(interactor.markRead(marked, Moment(9, 0)).isSuccess)
+
+        assertTrue("лишняя запись будит слушателя у собеседника", conversations.receipts.isEmpty())
+    }
+
+    @Test
+    fun `отметка на наносекунду вперёд всё же пишется`() = runTest {
+        val marked = chat(readUpTo = mapOf("uid-1" to Moment(10, 500)))
+
+        interactor.markRead(marked, Moment(10, 501))
+
+        assertEquals(Moment(10, 501), conversations.receipts.single().third)
     }
 
     @Test

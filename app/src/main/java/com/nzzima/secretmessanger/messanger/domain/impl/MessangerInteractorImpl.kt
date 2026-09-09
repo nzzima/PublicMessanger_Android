@@ -2,6 +2,7 @@ package com.nzzima.secretmessanger.messanger.domain.impl
 
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.chats.domain.models.Chat
+import com.nzzima.secretmessanger.chats.domain.models.Moment
 import com.nzzima.secretmessanger.chats.domain.openText
 import com.nzzima.secretmessanger.chats.domain.sealText
 import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
@@ -34,7 +35,15 @@ class MessangerInteractorImpl(
     ) { header, batch ->
         // Отказ любой из двух подписок становится отказом всего экрана: getOrThrow
         // внутри mapCatching возвращает его сюда, не роняя поток.
-        header.mapCatching { chat -> Dialogue(chat, batch.getOrThrow().map { it.reply(chat) }) }
+        header.mapCatching { chat ->
+            val messages = batch.getOrThrow()
+
+            Dialogue(
+                chat = chat,
+                replies = messages.map { it.reply(chat) },
+                lastIncoming = messages.lastOrNull { it.senderId != chat.selfId }?.date,
+            )
+        }
     }
 
     override suspend fun send(chat: Chat, text: String): Result<Unit> {
@@ -53,10 +62,18 @@ class MessangerInteractorImpl(
                 body = payload,
                 encrypted = chat.isEncrypted,
                 version = chat.keyVersion,
-                date = System.currentTimeMillis(),
+                date = Moment.of(System.currentTimeMillis()),
                 kind = MessageKind.Text,
             ),
         )
+    }
+
+    override suspend fun markRead(chat: Chat, upTo: Moment): Result<Unit> {
+        // Отметка только растёт: повторная запись того же разбудила бы слушателя шапки у
+        // собеседника впустую.
+        if (chat.readUpTo[chat.selfId]?.let { it >= upTo } == true) return Result.success(Unit)
+
+        return conversations.markRead(chat.id, chat.selfId, upTo)
     }
 
     private fun Message.reply(chat: Chat) = Reply(
@@ -66,7 +83,9 @@ class MessangerInteractorImpl(
         // очевиден из стороны пузыря.
         author = if (chat.isGroup && senderId != chat.selfId) chat.logins[senderId].orEmpty() else "",
         outgoing = senderId == chat.selfId,
-        date = date,
+        date = date.millis,
+        // Галочки только на своих: чужой реплике «прочитано» ничего не сообщает.
+        read = senderId == chat.selfId && chat.isRead(date, chat.selfId),
         service = kind == MessageKind.KeyNotice,
     )
 

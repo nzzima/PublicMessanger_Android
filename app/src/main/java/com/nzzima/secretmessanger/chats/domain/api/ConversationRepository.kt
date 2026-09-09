@@ -3,6 +3,7 @@ package com.nzzima.secretmessanger.chats.domain.api
 import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
 import com.nzzima.secretmessanger.chats.domain.models.ConversationHeader
+import com.nzzima.secretmessanger.chats.domain.models.Moment
 import kotlinx.coroutines.flow.Flow
 
 /** Шапки диалогов из коллекции `conversation`. */
@@ -62,4 +63,17 @@ interface ConversationRepository {
      * заводит iOS.
      */
     suspend fun create(chat: Chat): Result<Unit>
+
+    /**
+     * Отмечает, что аккаунт [uid] дочитал диалог [convoId] до момента [upTo].
+     *
+     * Пишется дозаписью в карту `readUpTo` шапки: чужие отметки остаются на месте, и на это
+     * же опирается правило — оно требует, чтобы в карте изменился ровно свой ключ и ничей
+     * больше. Без такой проверки участник проставлял бы прочтение за другого, и это не
+     * косметика: человек ждал бы ответа, считая, что его прочли.
+     *
+     * [upTo] — момент **реплики**, а не «сейчас»: так обе стороны сравнивают числа с одних
+     * часов, отправительских.
+     */
+    suspend fun markRead(convoId: String, uid: String, upTo: Moment): Result<Unit>
 }

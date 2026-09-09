@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.messanger.domain
 
+import com.nzzima.secretmessanger.chats.domain.models.Moment
 import com.nzzima.secretmessanger.messanger.domain.api.MessageRepository
 import com.nzzima.secretmessanger.messanger.domain.models.Message
 import com.nzzima.secretmessanger.messanger.domain.models.MessageKind
@@ -54,7 +55,7 @@ fun message(
     body: String = "привет",
     encrypted: Boolean = false,
     version: Int = 1,
-    date: Long = 0,
+    date: Moment = Moment(0, 0),
     kind: MessageKind = MessageKind.Text,
 ) = Message(
     id = id,

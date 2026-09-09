@@ -9,7 +9,9 @@ package com.nzzima.secretmessanger.messanger.domain.models
  * @property author логин автора; пусто у своих реплик и в диалоге на двоих, где
  *   подписывать нечего.
  * @property outgoing наша ли это реплика: от неё зависит сторона и цвет пузыря.
- * @property date время отправки в миллисекундах эпохи.
+ * @property date время отправки в миллисекундах эпохи — для показа этого хватает.
+ * @property read прочитали ли реплику все, кроме нас. Считается только для своих: чужой
+ *   реплике «прочитано» ничего не сообщает — она и так перед глазами.
  * @property service отметка о смене ключа: строка посреди ленты, без пузыря и автора.
  */
 data class Reply(
@@ -18,5 +20,6 @@ data class Reply(
     val author: String,
     val outgoing: Boolean,
     val date: Long,
+    val read: Boolean,
     val service: Boolean,
 )

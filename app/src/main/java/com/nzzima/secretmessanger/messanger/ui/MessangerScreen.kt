@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nzzima.secretmessanger.messanger.domain.models.Reply
 import com.nzzima.secretmessanger.ui.components.BackButton
@@ -84,6 +85,13 @@ fun MessangerScreen(
     viewModel: MessangerViewModel = koinViewModel { parametersOf(convoId) },
 ) {
     val state by viewModel.observeMessangerScreenState().collectAsStateWithLifecycle()
+
+    // Прочтение отмечается, только пока экран на глазах: подписка переживает и уход в фон, и
+    // переход дальше по стеку, а метка обязана означать «человек это видел».
+    LifecycleResumeEffect(Unit) {
+        viewModel.onVisible()
+        onPauseOrDispose { viewModel.onHidden() }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -218,13 +226,22 @@ private fun ReplyRow(reply: Reply) {
             Text(text = reply.text, color = Ink, fontSize = 16.sp)
         }
 
-        Text(
-            text = shortTime(reply.date),
-            color = InkDim,
+        Row(modifier = Modifier.padding(horizontal = BUBBLE_PADDING, vertical = 2.dp)) {
             // Табличные цифры: без них время пляшет по горизонтали от реплики к реплике.
-            style = TextStyle(fontSize = 10.sp, fontFeatureSettings = "tnum"),
-            modifier = Modifier.padding(horizontal = BUBBLE_PADDING, vertical = 2.dp),
-        )
+            Text(text = shortTime(reply.date), color = InkDim, style = TIME_STYLE)
+
+            // Галочки приписаны к времени, а не занимают свою строку: место под пузырём уже
+            // отведено. Одна — «ушло в базу», две — «прочитано». Разделять «отправлено» и
+            // «доставлено» тут нечем и незачем: записалось в Firestore — значит дошло до
+            // всех, кто откроет чат.
+            if (reply.outgoing) {
+                Text(
+                    text = if (reply.read) Constants.READ_MARK else Constants.SENT_MARK,
+                    color = if (reply.read) Accent else InkDim,
+                    style = TIME_STYLE,
+                )
+            }
+        }
     }
 }
 
@@ -267,6 +284,7 @@ private fun InputBar(
     }
 }
 
+private val TIME_STYLE = TextStyle(fontSize = 10.sp, fontFeatureSettings = "tnum")
 private val SIDE_PADDING = 12.dp
 private val LIST_PADDING = 8.dp
 private val REPLY_GAP = 6.dp

@@ -14,6 +14,10 @@ package com.nzzima.secretmessanger.chats.domain.models
  * @property convoKeys ключ диалога, запечатанный каждому участнику; см.
  *   [com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys].
  * @property keyVersion текущая версия ключа диалога.
+ * @property readUpTo докуда каждый участник дочитал. Метка живёт в шапке, а не в самих
+ *   репликах, и это следствие правил: на `messages/{id}` стоит `allow update: if false` —
+ *   отправленное неизменяемо. Карта в шапке обходится одной записью вместо записи на каждую
+ *   прочитанную реплику. Диалоги, заведённые до появления меток, карты не имеют вовсе.
  */
 data class Chat(
     val id: String,
@@ -23,6 +27,7 @@ data class Chat(
     val selfId: String,
     val convoKeys: Map<String, String>,
     val keyVersion: Int,
+    val readUpTo: Map<String, Moment> = emptyMap(),
 ) {
 
     /** Группа — больше двух участников. */
@@ -51,6 +56,28 @@ data class Chat(
      * несколько, и выбирать из них одного было бы враньём.
      */
     val companionId: String? get() = if (isGroup) null else members.firstOrNull { it != selfId }
+
+    /**
+     * Прочитали ли реплику [date] **все**, кроме её автора.
+     *
+     * В группе «прочитали двое из пятерых» пришлось бы куда-то поместить, а действий из этой
+     * цифры не следует никаких: дописывать некому, ждать нечего. Две галочки, когда дошло до
+     * последнего, — единственная форма, у которой есть смысл.
+     *
+     * Сравнение идёт по дате **реплики**, а не по времени, когда её прочли: читающий
+     * возвращает ту же дату, что стоит в документе, поэтому обе стороны сравнивают числа с
+     * одних часов — отправительских. Со временем чтения разошедшиеся часы двух телефонов
+     * давали бы то галочки на непрочитанном, то их отсутствие на прочитанном.
+     *
+     * Диалог, в котором кроме автора никого нет, прочитанным не считается: подтвердить некому.
+     */
+    fun isRead(date: Moment, author: String): Boolean {
+        val others = members.filter { it != author }
+
+        return others.isNotEmpty() && others.all { member ->
+            readUpTo[member]?.let { it >= date } == true
+        }
+    }
 
     companion object {
 

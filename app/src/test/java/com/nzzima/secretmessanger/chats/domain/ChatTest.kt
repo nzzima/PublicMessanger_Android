@@ -1,6 +1,7 @@
 package com.nzzima.secretmessanger.chats.domain
 
 import com.nzzima.secretmessanger.chats.domain.models.Chat
+import com.nzzima.secretmessanger.chats.domain.models.Moment
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -55,6 +56,46 @@ class ChatTest {
     @Test
     fun `идентификатор — пара uid по алфавиту через подчёркивание`() {
         assertEquals("uid-1_uid-2", Chat.conversationId("uid-2", "uid-1"))
+    }
+
+    @Test
+    fun `прочитано, когда дочитали все, кроме автора`() {
+        val group = chat(
+            members = listOf("uid-1", "uid-2", "uid-3"),
+            readUpTo = mapOf("uid-2" to Moment(10, 0), "uid-3" to Moment(10, 0)),
+        )
+
+        assertTrue(group.isRead(Moment(9, 0), author = "uid-1"))
+    }
+
+    @Test
+    fun `один не дочитал — не прочитано`() {
+        val group = chat(
+            members = listOf("uid-1", "uid-2", "uid-3"),
+            readUpTo = mapOf("uid-2" to Moment(10, 0), "uid-3" to Moment(8, 0)),
+        )
+
+        assertFalse(group.isRead(Moment(9, 0), author = "uid-1"))
+    }
+
+    @Test
+    fun `своя отметка на прочтение своей же реплики не влияет`() {
+        val own = chat(readUpTo = mapOf("uid-1" to Moment(10, 0)))
+
+        assertFalse("подтвердить обязан собеседник, а не автор", own.isRead(Moment(9, 0), author = "uid-1"))
+    }
+
+    @Test
+    fun `отметка ровно на реплике считается прочтением`() {
+        val read = chat(readUpTo = mapOf("uid-2" to Moment(9, 500)))
+
+        assertTrue(read.isRead(Moment(9, 500), author = "uid-1"))
+        assertFalse("наносекунда назад — уже не дочитал", read.isRead(Moment(9, 501), author = "uid-1"))
+    }
+
+    @Test
+    fun `диалог без отметок не прочитан`() {
+        assertFalse(chat().isRead(Moment(9, 0), author = "uid-1"))
     }
 
     @Test

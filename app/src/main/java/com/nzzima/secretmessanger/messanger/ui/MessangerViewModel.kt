@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
+import com.nzzima.secretmessanger.chats.domain.models.Moment
 import com.nzzima.secretmessanger.messanger.domain.api.MessangerInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -42,6 +43,18 @@ class MessangerViewModel(
      */
     private var chat: Chat? = null
 
+    /** Время последней чужой реплики — ею отмечается прочтение. */
+    private var lastIncoming: Moment? = null
+
+    /**
+     * Виден ли экран.
+     *
+     * Подписка живёт дольше показа: свёрнутое приложение продолжает получать снимки, и без
+     * этой проверки чат, убранный в карман вместе с телефоном, отмечал бы входящие
+     * прочитанными. Собеседник видел бы две галочки на том, чего никто не читал.
+     */
+    private var visible = false
+
     /** Текущее состояние экрана. */
     fun observeMessangerScreenState(): StateFlow<MessangerUiState> = messangerScreenState.asStateFlow()
 
@@ -56,6 +69,17 @@ class MessangerViewModel(
      * прежней подпиской нечего.
      */
     fun retry() = subscribe()
+
+    /** Экран показался: с этого мига входящие считаются прочитанными. */
+    fun onVisible() {
+        visible = true
+        markRead()
+    }
+
+    /** Экран ушёл с глаз — отмечать прочтение больше нечем. */
+    fun onHidden() {
+        visible = false
+    }
 
     /** Записывает набранный текст и снимает показанную ошибку. */
     fun onDraftChange(value: String) = messangerScreenState.update { current ->
@@ -99,6 +123,19 @@ class MessangerViewModel(
         }
     }
 
+    /**
+     * Отмечает прочтение по последней чужой реплике.
+     *
+     * Отсев повторов — дело сценария: он сверяется с отметкой из шапки, а та только растёт.
+     */
+    private fun markRead() {
+        val chat = chat ?: return
+        val upTo = lastIncoming ?: return
+        if (!visible) return
+
+        viewModelScope.launch { messangerInteractor.markRead(chat, upTo) }
+    }
+
     private fun subscribe() {
         val uid = sessionInteractor.observeSession().value.uidOrNull ?: return
 
@@ -110,6 +147,8 @@ class MessangerViewModel(
                 snapshot
                     .onSuccess { dialogue ->
                         chat = dialogue.chat
+                        lastIncoming = dialogue.lastIncoming
+                        markRead()
                         messangerScreenState.update { current ->
                             // Набранное и показанная ошибка переживают новый снимок: чужая
                             // реплика посреди набора текста его не стирает.

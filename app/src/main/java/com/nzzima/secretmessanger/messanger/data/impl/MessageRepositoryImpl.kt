@@ -4,11 +4,13 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.nzzima.secretmessanger.chats.data.impl.toMoment
+import com.nzzima.secretmessanger.chats.data.impl.toTimestamp
+import com.nzzima.secretmessanger.chats.domain.models.Moment
 import com.nzzima.secretmessanger.messanger.domain.api.MessageRepository
 import com.nzzima.secretmessanger.messanger.domain.models.Message
 import com.nzzima.secretmessanger.messanger.domain.models.MessageKind
 import com.nzzima.secretmessanger.utils.constants.Constants
-import java.util.Date
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -41,7 +43,7 @@ class MessageRepositoryImpl(private val firestore: FirebaseFirestore) : MessageR
     }
 
     override suspend fun send(convoId: String, message: Message): Result<Unit> = runCatching {
-        val date = Timestamp(Date(message.date))
+        val date = message.date.toTimestamp()
 
         // Время у шапки и у реплики одно и то же значение: список диалогов сортируется
         // по шапке, лента — по реплике, и разъехаться им нельзя.
@@ -107,7 +109,7 @@ private fun DocumentSnapshot.toMessage() = Message(
     body = getString(Constants.MESSAGE_FIELD).orEmpty(),
     encrypted = getLong(Constants.ENCRYPTED_FIELD)?.toInt() == 1,
     version = getLong(Constants.VERSION_FIELD)?.toInt() ?: 0,
-    date = getTimestamp(Constants.DATE_FIELD)?.toDate()?.time ?: System.currentTimeMillis(),
+    date = getTimestamp(Constants.DATE_FIELD)?.toMoment() ?: Moment.of(System.currentTimeMillis()),
     kind = getString(Constants.TYPE_FIELD).toKind(),
 )
 

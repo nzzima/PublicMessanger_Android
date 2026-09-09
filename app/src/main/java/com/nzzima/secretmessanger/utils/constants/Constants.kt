@@ -29,6 +29,7 @@ object Constants {
     const val LAST_ENCRYPTED_FIELD = "lastEnc"
     const val LAST_VERSION_FIELD = "lastV"
     const val DATE_FIELD = "date"
+    const val READ_UP_TO_FIELD = "readUpTo"
 
     const val SENDER_ID_FIELD = "senderId"
     const val MESSAGE_FIELD = "message"
@@ -107,6 +108,8 @@ object Constants {
     const val PHOTO_MESSAGE = "📷 Фото"
     const val LOCATION_MESSAGE = "📍 Геопозиция"
     const val KEY_ROTATED = "ключ обновлён"
+    const val SENT_MARK = " ✓"
+    const val READ_MARK = " ✓✓"
     const val NO_CONVERSATION_KEY = "Ключ этого диалога вам ещё не выдан"
     const val CONVERSATION_GONE = "Диалог удалён"
 

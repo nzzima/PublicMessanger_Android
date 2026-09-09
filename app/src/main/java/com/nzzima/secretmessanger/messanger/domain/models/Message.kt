@@ -1,5 +1,7 @@
 package com.nzzima.secretmessanger.messanger.domain.models
 
+import com.nzzima.secretmessanger.chats.domain.models.Moment
+
 /**
  * Реплика так, как она лежит в `conversation/{id}/messages/{messageId}`.
  *
@@ -12,7 +14,8 @@ package com.nzzima.secretmessanger.messanger.domain.models
  * @property encrypted поле `enc`. Реплики, написанные до появления шифрования, его не
  *   имеют и читаются как есть.
  * @property version версия ключа, которой закрыт [body]; поле `v`.
- * @property date время отправки в миллисекундах эпохи.
+ * @property date время отправки; парой секунд и наносекунд, потому что этой же величиной
+ *   возвращается метка прочтения — см. [com.nzzima.secretmessanger.chats.domain.models.Moment].
  * @property kind вид реплики; выводится из поля `type`.
  */
 data class Message(
@@ -21,6 +24,6 @@ data class Message(
     val body: String,
     val encrypted: Boolean,
     val version: Int,
-    val date: Long,
+    val date: Moment,
     val kind: MessageKind,
 )
