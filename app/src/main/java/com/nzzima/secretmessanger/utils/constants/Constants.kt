@@ -58,6 +58,7 @@ object Constants {
     const val PROFILE_ROUTE = "profile"
     const val MESSANGER_ROUTE = "messanger"
     const val USER_ROUTE = "user"
+    const val EDIT_ROUTE = "edit"
     const val CONVO_ID_ARGUMENT = "convoId"
     const val USER_ID_ARGUMENT = "userId"
     const val LOGIN_ARGUMENT = "login"
@@ -125,6 +126,13 @@ object Constants {
     const val PROFILE_IDENTIFIER = "Идентификатор"
     const val PROFILE_NOTE = "Заметка"
     const val WRITE_MESSAGE = "Написать"
+    const val EDIT_PROFILE = "Изменить"
+    const val EDIT_PROFILE_TITLE = "Редактирование"
+    const val SAVE = "Сохранить"
+    const val NOTE_PLACEHOLDER = "Заметка о себе"
+    const val SIGN_OUT_QUESTION = "Вы действительно хотите выйти?"
+    const val SIGN_OUT_CONFIRM = "Выйти из аккаунта"
+    const val CANCEL = "Отмена"
 
     const val SIGN_OUT = "Выйти"
 

@@ -23,6 +23,25 @@ class ProfileRepositoryImpl(private val firestore: FirebaseFirestore) : ProfileR
             .await()
     }
 
+    override suspend fun updateProfile(
+        uid: String,
+        login: String,
+        name: String,
+        someInfo: String,
+    ): Result<Unit> = runCatching {
+        firestore.collection(Constants.USERS_COLLECTION)
+            .document(uid)
+            .set(
+                mapOf(
+                    Constants.LOGIN_FIELD to login,
+                    Constants.NAME_FIELD to name,
+                    Constants.SOME_INFO_FIELD to someInfo,
+                ),
+                SetOptions.merge(),
+            )
+            .await()
+    }
+
     override suspend fun exists(uid: String): Result<Boolean> = runCatching {
         firestore.collection(Constants.USERS_COLLECTION)
             .document(uid)

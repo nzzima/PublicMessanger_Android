@@ -5,6 +5,7 @@ import com.nzzima.secretmessanger.chats.ui.ChatsViewModel
 import com.nzzima.secretmessanger.contacts.ui.ContactsViewModel
 import com.nzzima.secretmessanger.main.ui.RootViewModel
 import com.nzzima.secretmessanger.messanger.ui.MessangerViewModel
+import com.nzzima.secretmessanger.profile.ui.EditProfileViewModel
 import com.nzzima.secretmessanger.profile.ui.ProfileViewModel
 import com.nzzima.secretmessanger.profile.ui.UserProfileViewModel
 import org.koin.core.module.dsl.viewModel
@@ -32,6 +33,10 @@ val viewModelModule = module {
 
     viewModel {
         ProfileViewModel(get(), get())
+    }
+
+    viewModel {
+        EditProfileViewModel(get(), get(), get())
     }
 
     viewModel { (convoId: String) ->

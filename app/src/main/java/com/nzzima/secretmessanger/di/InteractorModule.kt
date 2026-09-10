@@ -18,7 +18,9 @@ import com.nzzima.secretmessanger.crypto.domain.impl.ConversationKeysImpl
 import com.nzzima.secretmessanger.crypto.domain.impl.IdentityInteractorImpl
 import com.nzzima.secretmessanger.messanger.domain.api.MessangerInteractor
 import com.nzzima.secretmessanger.messanger.domain.impl.MessangerInteractorImpl
+import com.nzzima.secretmessanger.profile.domain.api.ProfileEditor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
+import com.nzzima.secretmessanger.profile.domain.impl.ProfileEditorImpl
 import com.nzzima.secretmessanger.profile.domain.impl.ProfileInteractorImpl
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.session.domain.impl.SessionInteractorImpl
@@ -74,5 +76,9 @@ val interactorModule = module {
 
     single<ProfileInteractor> {
         ProfileInteractorImpl(get())
+    }
+
+    single<ProfileEditor> {
+        ProfileEditorImpl(get(), get(), get())
     }
 }

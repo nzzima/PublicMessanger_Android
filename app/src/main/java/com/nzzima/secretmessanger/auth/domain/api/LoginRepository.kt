@@ -23,6 +23,15 @@ interface LoginRepository {
      */
     suspend fun claim(login: String, uid: String): Result<Unit>
 
+    /**
+     * Отпускает [login] — удаляет запись реестра.
+     *
+     * Правило пускает удаление только владельцу записи, поэтому чужое имя этим не
+     * освободить. Отпускать нечего — тоже успех: удаление несуществующего документа
+     * Firestore считает выполненным.
+     */
+    suspend fun release(login: String): Result<Unit>
+
     companion object {
         /** Идентификатор документа реестра: логин в нижнем регистре. */
         fun key(login: String): String = login.lowercase()

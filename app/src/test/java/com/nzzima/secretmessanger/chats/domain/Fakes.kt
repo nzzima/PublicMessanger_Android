@@ -15,7 +15,9 @@ import kotlinx.coroutines.flow.onStart
  * Начального значения нет: до первого [send] подписчик не получает ничего — так же ведёт
  * себя Firestore, пока не пришёл первый снимок.
  */
-class FakeConversationRepository : ConversationRepository {
+class FakeConversationRepository(
+    private val journal: MutableList<String> = mutableListOf(),
+) : ConversationRepository {
 
     private val snapshots = MutableSharedFlow<Result<List<ConversationHeader>>>(
         replay = 1,
@@ -82,6 +84,20 @@ class FakeConversationRepository : ConversationRepository {
 
     override suspend fun markRead(convoId: String, uid: String, upTo: Moment): Result<Unit> {
         receipts += Triple(convoId, uid, upTo)
+        return Result.success(Unit)
+    }
+
+    /** Разосланные по диалогам имена: чьё и какое. */
+    val renames = mutableListOf<Pair<String, String>>()
+
+    /** Чем отказывает рассылка имени; `null` — проходит. */
+    var renameFails: Throwable? = null
+
+    override suspend fun renameInConversations(uid: String, login: String): Result<Unit> {
+        renameFails?.let { return Result.failure(it) }
+
+        renames += uid to login
+        journal += "rename:$login"
         return Result.success(Unit)
     }
 

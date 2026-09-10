@@ -23,6 +23,7 @@ import com.nzzima.secretmessanger.crypto.domain.api.PublicKeyRepository
 import com.nzzima.secretmessanger.messanger.domain.api.MessageRepository
 import com.nzzima.secretmessanger.messanger.domain.api.MessangerInteractor
 import com.nzzima.secretmessanger.messanger.ui.MessangerViewModel
+import com.nzzima.secretmessanger.profile.domain.api.ProfileEditor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.profile.ui.UserProfileViewModel
@@ -95,6 +96,7 @@ class ModulesTest {
                 ChatsInteractor::class,
                 ContactsInteractor::class,
                 ProfileInteractor::class,
+                ProfileEditor::class,
                 MessangerInteractor::class,
                 ConversationStarter::class,
             ),

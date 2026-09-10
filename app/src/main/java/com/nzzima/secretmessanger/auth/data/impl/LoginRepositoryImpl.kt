@@ -28,6 +28,13 @@ class LoginRepositoryImpl(private val firestore: FirebaseFirestore) : LoginRepos
         }
     }
 
+    override suspend fun release(login: String): Result<Unit> = runCatching {
+        firestore.collection(Constants.LOGINS_COLLECTION)
+            .document(LoginRepository.key(login))
+            .delete()
+            .await()
+    }
+
     override suspend fun claim(login: String, uid: String): Result<Unit> = runCatching {
         try {
             firestore.collection(Constants.LOGINS_COLLECTION)

@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nzzima.secretmessanger.profile.domain.models.Profile
 import com.nzzima.secretmessanger.ui.components.FailureNotice
+import com.nzzima.secretmessanger.ui.theme.Accent
 import com.nzzima.secretmessanger.ui.theme.Ink
 import com.nzzima.secretmessanger.ui.theme.InkDim
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -39,12 +40,14 @@ import org.koin.androidx.compose.koinViewModel
 /**
  * Экран своего профиля.
  *
- * Правки профиля здесь нет: `EditProfile` с iOS не портирован. Из-за этого «Выйти» стоит
- * прямо на экране, а не за ним, как на iOS.
+ * Правка и выход из аккаунта — за кнопкой «Изменить», как на iOS.
+ *
+ * @param onEdit переход к правке профиля.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    onEdit: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = koinViewModel(),
 ) {
@@ -56,6 +59,11 @@ fun ProfileScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(Constants.PROFILE_TITLE) },
+                actions = {
+                    TextButton(onClick = onEdit) {
+                        Text(Constants.EDIT_PROFILE, color = Accent, fontSize = 15.sp)
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
@@ -67,7 +75,7 @@ fun ProfileScreen(
             when (val current = state) {
                 ProfileUiState.Loading -> CircularProgressIndicator()
 
-                is ProfileUiState.Content -> ProfileBody(current.profile, viewModel::signOut)
+                is ProfileUiState.Content -> ProfileBody(current.profile)
 
                 is ProfileUiState.Failed -> FailureNotice(current.message, viewModel::retry)
             }
@@ -76,7 +84,7 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun ProfileBody(profile: Profile, onSignOut: () -> Unit) {
+private fun ProfileBody(profile: Profile) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -117,10 +125,6 @@ private fun ProfileBody(profile: Profile, onSignOut: () -> Unit) {
             monospaced = true,
             modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
         )
-
-        TextButton(onClick = onSignOut, modifier = Modifier.padding(top = 32.dp)) {
-            Text(Constants.SIGN_OUT, color = MaterialTheme.colorScheme.error, fontSize = 15.sp)
-        }
     }
 }
 

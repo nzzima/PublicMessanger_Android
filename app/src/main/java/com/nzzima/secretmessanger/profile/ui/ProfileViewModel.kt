@@ -12,9 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Состояние экрана профиля и выход из аккаунта.
+ * Состояние экрана своего профиля.
  *
- * Выход живёт здесь, а не в шапке «Чатов», где стоял до появления вкладок.
+ * Выход из аккаунта отсюда уехал в правку профиля — туда же, где он живёт на iOS. Здесь он
+ * стоял временно, пока экрана правки не было.
  */
 class ProfileViewModel(
     private val sessionInteractor: SessionInteractor,
@@ -33,9 +34,6 @@ class ProfileViewModel(
 
     /** Читает профиль заново — нужна после отказа. */
     fun retry() = subscribe()
-
-    /** Завершает сессию. Локальные данные аккаунта не затрагивает. */
-    fun signOut() = sessionInteractor.signOut()
 
     private fun subscribe() {
         val uid = sessionInteractor.observeSession().value.uidOrNull ?: return

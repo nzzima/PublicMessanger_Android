@@ -53,10 +53,19 @@ class FakeLoginRepository(
     private val taken: MutableMap<String, String> = mutableMapOf(),
     private val claimFails: Throwable? = null,
     private val hangs: Boolean = false,
+    private val releaseFails: Throwable? = null,
+    private val journal: MutableList<String> = mutableListOf(),
 ) : LoginRepository {
 
     var claimed = mutableListOf<String>()
         private set
+
+    /** Отпущенные имена, в порядке вызова. */
+    var released = mutableListOf<String>()
+        private set
+
+    /** Кто держит [login] в реестре; `null` — имя свободно. */
+    fun owner(login: String): String? = taken[LoginRepository.key(login)]
 
     override suspend fun check(login: String, uid: String?): Result<LoginAvailability> {
         if (hangs) awaitCancellation()
@@ -74,6 +83,15 @@ class FakeLoginRepository(
         claimFails?.let { return Result.failure(it) }
         taken[LoginRepository.key(login)] = uid
         claimed += login
+        journal += "claim:$login"
+        return Result.success(Unit)
+    }
+
+    override suspend fun release(login: String): Result<Unit> {
+        releaseFails?.let { return Result.failure(it) }
+        taken.remove(LoginRepository.key(login))
+        released += login
+        journal += "release:$login"
         return Result.success(Unit)
     }
 }
@@ -88,9 +106,15 @@ class FakeLoginRepository(
 class FakeProfileRepository(
     private val withProfile: MutableSet<String> = mutableSetOf(),
     private val existsFails: Throwable? = null,
+    private val updateFails: Throwable? = null,
+    private val journal: MutableList<String> = mutableListOf(),
 ) : ProfileRepository {
 
     var created: Triple<String, String, String>? = null
+        private set
+
+    /** Поля, записанные последней правкой. */
+    var updated: ProfileFields? = null
         private set
 
     override suspend fun createProfile(uid: String, login: String, name: String): Result<Unit> {
@@ -99,6 +123,22 @@ class FakeProfileRepository(
         return Result.success(Unit)
     }
 
+    override suspend fun updateProfile(
+        uid: String,
+        login: String,
+        name: String,
+        someInfo: String,
+    ): Result<Unit> {
+        updateFails?.let { return Result.failure(it) }
+
+        updated = ProfileFields(uid, login, name, someInfo)
+        journal += "profile:$login"
+        return Result.success(Unit)
+    }
+
     override suspend fun exists(uid: String): Result<Boolean> =
         existsFails?.let { Result.failure(it) } ?: Result.success(uid in withProfile)
 }
+
+/** Поля профиля, записанные правкой. */
+data class ProfileFields(val uid: String, val login: String, val name: String, val someInfo: String)

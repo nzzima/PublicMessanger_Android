@@ -26,6 +26,7 @@ import androidx.navigation.navArgument
 import com.nzzima.secretmessanger.chats.ui.ChatsScreen
 import com.nzzima.secretmessanger.contacts.ui.ContactsScreen
 import com.nzzima.secretmessanger.messanger.ui.MessangerScreen
+import com.nzzima.secretmessanger.profile.ui.EditProfileScreen
 import com.nzzima.secretmessanger.profile.ui.ProfileScreen
 import com.nzzima.secretmessanger.profile.ui.UserProfileScreen
 import com.nzzima.secretmessanger.ui.theme.InkDim
@@ -94,7 +95,16 @@ fun MainScreen(
             composable(Tab.Chats.route) {
                 ChatsScreen(onOpen = { convoId -> navController.navigate(messangerRoute(convoId)) })
             }
-            composable(Tab.Profile.route) { ProfileScreen() }
+            composable(Tab.Profile.route) {
+                ProfileScreen(onEdit = { navController.navigate(Constants.EDIT_ROUTE) })
+            }
+            composable(Constants.EDIT_ROUTE) {
+                EditProfileScreen(
+                    backTitle = remember { navController.backTitle() },
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                )
+            }
             composable(
                 route = userRoute("{${Constants.USER_ID_ARGUMENT}}", "{${Constants.LOGIN_ARGUMENT}}"),
                 arguments = listOf(

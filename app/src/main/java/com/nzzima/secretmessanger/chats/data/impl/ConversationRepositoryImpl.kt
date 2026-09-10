@@ -3,6 +3,7 @@ package com.nzzima.secretmessanger.chats.data.impl
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.SetOptions
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
@@ -94,6 +95,20 @@ class ConversationRepositoryImpl(private val firestore: FirebaseFirestore) : Con
                 SetOptions.merge(),
             )
             .await()
+    }
+
+    override suspend fun renameInConversations(uid: String, login: String): Result<Unit> = runCatching {
+        val documents = firestore.collection(Constants.CONVERSATION_COLLECTION)
+            .whereArrayContains(Constants.USERS_FIELD, uid)
+            .get()
+            .await()
+            .documents
+
+        if (documents.isEmpty()) return@runCatching
+
+        val batch = firestore.batch()
+        documents.forEach { batch.update(it.reference, FieldPath.of(Constants.LOGINS_FIELD, uid), login) }
+        batch.commit().await()
     }
 
     override suspend fun create(chat: Chat): Result<Unit> = runCatching {
