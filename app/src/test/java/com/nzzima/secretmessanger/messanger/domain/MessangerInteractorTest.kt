@@ -23,6 +23,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import com.nzzima.secretmessanger.messanger.domain.models.Place
+import com.nzzima.secretmessanger.photo.domain.models.PhotoSize
+import com.nzzima.secretmessanger.photo.domain.models.PhotoTooLarge
 import org.junit.Test
 
 /**
@@ -33,10 +36,11 @@ import org.junit.Test
  */
 class MessangerInteractorTest {
 
+    private val photos = FakePhotoInteractor()
     private val identityKeys = IdentityKeyStoreImpl(FakeSharedPreferences(), FakeMasterKeyProvider())
     private val conversations = FakeConversationRepository()
     private val messages = FakeMessageRepository()
-    private val interactor = MessangerInteractorImpl(conversations, messages, ConversationKeysImpl(identityKeys))
+    private val interactor = MessangerInteractorImpl(conversations, messages, ConversationKeysImpl(identityKeys), photos)
 
     private val identityPrivate = identityKeys.createNew("uid-1")
 
@@ -306,5 +310,98 @@ class MessangerInteractorTest {
 
         assertSame(CryptoFailure.NoKey, result.exceptionOrNull())
         assertTrue("отправка без ключа не пишет ничего", messages.sent.isEmpty())
+    }
+
+    @Test
+    fun `снимок уходит двумя записями - сперва байты, потом сообщение`() = runTest {
+        val (chat, _) = sealedChat()
+
+        assertTrue(interactor.sendPhoto(chat, "content://pic").isSuccess)
+
+        val (_, message) = messages.sent.single()
+        assertEquals("байты кладутся под тем же идентификатором", listOf(message.id to "content://pic"), photos.attached)
+        assertEquals(MessageKind.Photo, message.kind)
+        assertEquals(PhotoSize(800, 600), message.size)
+    }
+
+    @Test
+    fun `у снимка в шапку уходит то же превью, что в теле`() = runTest {
+        val (chat, key) = sealedChat()
+
+        interactor.sendPhoto(chat, "content://pic")
+
+        val (_, message) = messages.sent.single()
+        assertEquals(Constants.PHOTO_MESSAGE, CryptoBox.open(message.body, key))
+        assertEquals("в списке диалогов снимок виден подписью", message.body, messages.previews.single())
+    }
+
+    @Test
+    fun `не закодировавшийся снимок не пишет сообщения вовсе`() = runTest {
+        val (chat, _) = sealedChat()
+        photos.refusal = PhotoTooLarge()
+
+        val result = interactor.sendPhoto(chat, "content://pic")
+
+        assertTrue(result.exceptionOrNull() is PhotoTooLarge)
+        assertTrue("пузырь вёл бы в пустоту", messages.sent.isEmpty())
+    }
+
+    @Test
+    fun `точка уходит одной записью, а в шапку — подпись, а не координаты`() = runTest {
+        val (chat, key) = sealedChat()
+
+        assertTrue(interactor.sendLocation(chat, Place(55.75, 37.62)).isSuccess)
+
+        val (_, message) = messages.sent.single()
+        assertEquals(MessageKind.Location, message.kind)
+        assertEquals("55.750000,37.620000", CryptoBox.open(message.body, key))
+        assertEquals(Constants.LOCATION_MESSAGE, CryptoBox.open(messages.previews.single(), key))
+        assertTrue("своей подколлекции у точки нет", photos.attached.isEmpty())
+    }
+
+    @Test
+    fun `снимок в ленте несёт размеры и свою версию ключа`() = runTest {
+        val (chat, key) = sealedChat(version = 1)
+        conversations.sendChat(chat)
+        messages.send(
+            listOf(
+                message(
+                    body = CryptoBox.seal(Constants.PHOTO_MESSAGE, key),
+                    encrypted = true,
+                    kind = MessageKind.Photo,
+                    size = PhotoSize(1280, 720),
+                ),
+            ),
+        )
+
+        val photo = replies().single().photo
+
+        assertEquals(PhotoSize(1280, 720), photo?.size)
+        assertEquals("версия берётся у реплики: после ротации прежний ключ тоже нужен", 1, photo?.keyVersion)
+    }
+
+    @Test
+    fun `точка из ленты разбирается в координаты`() = runTest {
+        val (chat, key) = sealedChat()
+        conversations.sendChat(chat)
+        messages.send(
+            listOf(message(body = CryptoBox.seal("55.750000,37.620000", key), encrypted = true, kind = MessageKind.Location)),
+        )
+
+        assertEquals(Place(55.75, 37.62), replies().single().place)
+    }
+
+    @Test
+    fun `точка без ключа остаётся подписью, а не выдуманным местом`() = runTest {
+        val strangerKey = CryptoBox.newConversationKey()
+        conversations.sendChat(chat())
+        messages.send(
+            listOf(message(body = CryptoBox.seal("55.75,37.62", strangerKey), encrypted = true, kind = MessageKind.Location)),
+        )
+
+        val reply = replies().single()
+
+        assertNull("врать точкой посреди океана хуже, чем не показать", reply.place)
+        assertEquals(Constants.LOCATION_MESSAGE, reply.text)
     }
 }

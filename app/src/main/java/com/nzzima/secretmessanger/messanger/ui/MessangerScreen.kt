@@ -1,6 +1,15 @@
 package com.nzzima.secretmessanger.messanger.ui
 
+import android.Manifest
+import android.content.Intent
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +17,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +25,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +33,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -33,21 +46,35 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nzzima.secretmessanger.messanger.domain.models.Place
 import com.nzzima.secretmessanger.messanger.domain.models.Reply
+import com.nzzima.secretmessanger.photo.domain.models.PhotoSize
+import com.nzzima.secretmessanger.ui.components.AttachIcon
+import com.nzzima.secretmessanger.ui.components.Avatar
 import com.nzzima.secretmessanger.ui.components.BackButton
 import com.nzzima.secretmessanger.ui.components.FailureNotice
-import com.nzzima.secretmessanger.ui.components.Avatar
 import com.nzzima.secretmessanger.ui.components.Field
 import com.nzzima.secretmessanger.ui.components.Notice
 import com.nzzima.secretmessanger.ui.components.SendIcon
@@ -136,7 +163,13 @@ fun MessangerScreen(
                     }
 
                 is MessangerUiState.Content -> {
-                    ReplyList(current.replies, current.avatars, Modifier.weight(1f))
+                    ReplyList(
+                        replies = current.replies,
+                        avatars = current.avatars,
+                        photos = current.photos,
+                        onOpenPhoto = viewModel::onPhotoOpened,
+                        modifier = Modifier.weight(1f),
+                    )
 
                     current.error?.let { message ->
                         Text(
@@ -153,9 +186,46 @@ fun MessangerScreen(
                         canSend = current.canSend,
                         onDraftChange = viewModel::onDraftChange,
                         onSend = viewModel::onSend,
+                        onPhotoPicked = viewModel::onPhotoPicked,
+                        onLocationPicked = viewModel::onLocationPicked,
+                        onLocationDenied = viewModel::onLocationDenied,
                     )
                 }
             }
+        }
+    }
+
+    (state as? MessangerUiState.Content)?.opened?.let { image ->
+        FullscreenPhoto(image, viewModel::onPhotoClosed)
+    }
+}
+
+/**
+ * Снимок на весь экран.
+ *
+ * Закрывается нажатием куда угодно и системным «назад»: своей кнопки нет — она заняла бы
+ * место поверх того, ради чего экран и открыт.
+ */
+@Composable
+private fun FullscreenPhoto(image: ByteArray, onClose: () -> Unit) {
+    val bitmap = remember(image) {
+        runCatching { BitmapFactory.decodeByteArray(image, 0, image.size) }.getOrNull()
+    } ?: return
+
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(onClick = onClose),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = Constants.CLOSE_PHOTO,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -170,6 +240,8 @@ fun MessangerScreen(
 private fun ReplyList(
     replies: List<Reply>,
     avatars: Map<String, ByteArray>,
+    photos: Map<String, ByteArray>,
+    onOpenPhoto: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (replies.isEmpty()) {
@@ -188,14 +260,19 @@ private fun ReplyList(
         verticalArrangement = Arrangement.spacedBy(REPLY_GAP, Alignment.Bottom),
     ) {
         items(replies.asReversed(), key = { it.id }) { reply ->
-            ReplyRow(reply, avatars[reply.authorId])
+            ReplyRow(reply, avatars[reply.authorId], photos[reply.id], onOpenPhoto)
         }
     }
 }
 
 /** Реплика: кружок автора, пузырь со своей стороны, под ним время. */
 @Composable
-private fun ReplyRow(reply: Reply, avatar: ByteArray?) {
+private fun ReplyRow(
+    reply: Reply,
+    avatar: ByteArray?,
+    photo: ByteArray?,
+    onOpenPhoto: (String) -> Unit,
+) {
     if (reply.service) {
         Text(
             text = reply.text,
@@ -232,7 +309,12 @@ private fun ReplyRow(reply: Reply, avatar: ByteArray?) {
                         if (reply.outgoing) OwnBubble else Raised,
                         RoundedCornerShape(BUBBLE_CORNER),
                     )
-                    .padding(horizontal = BUBBLE_PADDING, vertical = BUBBLE_INNER_PADDING),
+                    // У снимка поля тоньше: пузырь вокруг фотографии — это рамка, а не лист.
+                    .padding(
+                        horizontal = if (reply.photo == null) BUBBLE_PADDING else PHOTO_MARGIN,
+                        vertical = if (reply.photo == null) BUBBLE_INNER_PADDING else PHOTO_MARGIN,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 if (reply.author.isNotEmpty()) {
                     Text(
@@ -242,10 +324,17 @@ private fun ReplyRow(reply: Reply, avatar: ByteArray?) {
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = if (reply.photo == null) 0.dp else 4.dp),
                     )
                 }
 
-                Text(text = reply.text, color = Ink, fontSize = 16.sp)
+                when {
+                    reply.photo != null -> PhotoBubble(reply, photo, onOpenPhoto)
+
+                    reply.place != null -> PlaceBubble(reply.place, reply.text)
+
+                    else -> Text(text = reply.text, color = Ink, fontSize = 16.sp)
+                }
             }
 
             if (reply.outgoing) {
@@ -286,6 +375,149 @@ private fun ReplyRow(reply: Reply, avatar: ByteArray?) {
 }
 
 /**
+ * Скрепка с меню вложений.
+ *
+ * Вложения живут под одной кнопкой, а не каждое своей: панель ввода упёрлась бы в место уже
+ * на втором виде. Меню открывается нажатием — удержание на iOS занято микрофоном, и путать
+ * два жеста значило бы терять записи.
+ */
+@Composable
+private fun AttachButton(
+    onPhotoPicked: (String) -> Unit,
+    onLocationPicked: () -> Unit,
+    onLocationDenied: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+
+    // Системный выборщик картинок разрешений не требует вовсе — приложение получает доступ
+    // ровно к тому, что человек выбрал, и только на время выбора.
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let { onPhotoPicked(it.toString()) }
+    }
+
+    // Точное и грубое спрашиваются парой: человек вправе дать только второе, и грубого места
+    // для точки на карте достаточно.
+    val place = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        if (granted.values.any { it }) onLocationPicked() else onLocationDenied()
+    }
+
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(imageVector = AttachIcon, contentDescription = Constants.ATTACH, tint = Accent)
+        }
+
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(Constants.ATTACH_PHOTO) },
+                onClick = {
+                    open = false
+                    picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+            )
+
+            DropdownMenuItem(
+                text = { Text(Constants.ATTACH_LOCATION) },
+                onClick = {
+                    open = false
+                    place.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                        ),
+                    )
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Снимок в пузыре.
+ *
+ * Место под него отводится по размерам из сообщения, ещё до того, как приедут байты: иначе
+ * лента дёргалась бы при каждой догрузке. Пока байтов нет, на этом месте стоит подпись
+ * «📷 Фото» — ею же остаётся снимок, который не открылся: ключа нужной версии у нас нет, и
+ * крутить ожидание вечно значило бы обещать несбыточное.
+ */
+@Composable
+private fun PhotoBubble(reply: Reply, image: ByteArray?, onOpen: (String) -> Unit) {
+    val attachment = reply.photo ?: return
+    val bitmap = remember(image) {
+        image?.let { bytes -> runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() }
+    }
+
+    Box(
+        modifier = Modifier
+            .width(attachment.size.bubbleWidth())
+            .aspectRatio(attachment.size.ratio())
+            .clip(RoundedCornerShape(PHOTO_CORNER))
+            .background(Raised)
+            .clickable(enabled = bitmap != null) { onOpen(reply.id) },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = Constants.OPEN_PHOTO,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Text(text = reply.text, color = InkDim, fontSize = 13.sp)
+        }
+    }
+}
+
+/** Пропорции снимка; нулевой стороны в базе быть не должно, но делить на неё нельзя. */
+private fun PhotoSize.ratio(): Float =
+    if (width > 0 && height > 0) width.toFloat() / height else 1f
+
+/**
+ * Ширина пузыря со снимком.
+ *
+ * У вертикального кадра её задаёт потолок высоты, а не ширины: при ширине по горизонтальному
+ * снимок 9:16 вырастал на пол-экрана и выталкивал из кадра собственное время и кружок автора.
+ */
+private fun PhotoSize.bubbleWidth(): Dp {
+    val ratio = ratio()
+
+    return if (ratio >= 1f) PHOTO_WIDTH else PHOTO_MAX_HEIGHT * ratio
+}
+
+/**
+ * Точка на карте.
+ *
+ * Карта не рисуется: показать её нечем — снимок карты требует ключа к платному сервису, а
+ * тащить в приложение целый картографический слой ради одного пузыря незачем. Нажатие
+ * открывает ту карту, что стоит у человека, ссылкой `geo:`.
+ */
+@Composable
+private fun PlaceBubble(place: Place, label: String) {
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier.clickable {
+            val point = Place.payload(place.latitude, place.longitude)
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$point?q=$point"))
+
+            // Карты может не быть вовсе — тогда нажатие просто ничего не делает.
+            runCatching { context.startActivity(intent) }
+        },
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(text = label, color = Ink, fontSize = 16.sp)
+
+        // На экране запятая с пробелом, в базе — без: там это разделитель пары, а не знак
+        // препинания.
+        Text(
+            text = Place.payload(place.latitude, place.longitude).replace(",", ", "),
+            color = InkDim,
+            style = TextStyle(fontSize = 12.sp, fontFeatureSettings = "tnum"),
+        )
+    }
+}
+
+/**
  * Панель ввода.
  *
  * Поле — то же, что на авторизации, но с заглавной после точки и автозаменой: здесь
@@ -297,6 +529,9 @@ private fun InputBar(
     canSend: Boolean,
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
+    onPhotoPicked: (String) -> Unit,
+    onLocationPicked: () -> Unit,
+    onLocationDenied: () -> Unit,
 ) {
     HorizontalDivider(color = MaterialTheme.colorScheme.surface)
 
@@ -304,6 +539,8 @@ private fun InputBar(
         modifier = Modifier.fillMaxWidth().padding(horizontal = SIDE_PADDING, vertical = LIST_PADDING),
         verticalAlignment = Alignment.Bottom,
     ) {
+        AttachButton(onPhotoPicked, onLocationPicked, onLocationDenied)
+
         Field(
             value = draft,
             onValueChange = onDraftChange,
@@ -330,6 +567,10 @@ private val LIST_PADDING = 8.dp
 private val REPLY_GAP = 6.dp
 private val BUBBLE_MAX_WIDTH = 260.dp
 private val BUBBLE_AVATAR = 30.dp
+private val PHOTO_WIDTH = 220.dp
+private val PHOTO_MAX_HEIGHT = 260.dp
+private val PHOTO_CORNER = 11.dp
+private val PHOTO_MARGIN = 4.dp
 private val AVATAR_GAP = 8.dp
 private val BUBBLE_CORNER = 15.dp
 private val BUBBLE_PADDING = 12.dp

@@ -6,7 +6,10 @@ import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
 import com.nzzima.secretmessanger.chats.domain.models.Moment
+import com.nzzima.secretmessanger.messanger.domain.api.LocationSource
 import com.nzzima.secretmessanger.messanger.domain.api.MessangerInteractor
+import com.nzzima.secretmessanger.messanger.domain.models.Dialogue
+import com.nzzima.secretmessanger.photo.domain.api.PhotoInteractor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -35,6 +38,8 @@ class MessangerViewModel(
     private val messangerInteractor: MessangerInteractor,
     private val profileInteractor: ProfileInteractor,
     private val avatarInteractor: AvatarInteractor,
+    private val photoInteractor: PhotoInteractor,
+    private val locationSource: LocationSource,
 ) : ViewModel() {
 
     private val messangerScreenState = MutableStateFlow<MessangerUiState>(MessangerUiState.Loading)
@@ -42,6 +47,9 @@ class MessangerViewModel(
 
     /** Участники, про которых уже спрашивали, — включая тех, у кого аватара не нашлось. */
     private val askedMembers = mutableSetOf<String>()
+
+    /** Реплики, снимки которых уже заказывали, — включая те, что не открылись. */
+    private val askedPhotos = mutableSetOf<String>()
 
     /**
      * Шапка последнего снимка — ею запечатывается отправляемое.
@@ -102,30 +110,103 @@ class MessangerViewModel(
      * человеку не за что.
      */
     fun onSend() {
+        val text = (messangerScreenState.value as? MessangerUiState.Content)?.draft?.trim().orEmpty()
+        if (text.isEmpty()) return
+
+        sending(clearsDraft = true) { chat -> messangerInteractor.send(chat, text) }
+    }
+
+    /**
+     * Отправляет выбранный снимок [source].
+     *
+     * Идёт тем же путём, что текст, включая срок в [Constants.SUBMIT_TIMEOUT_MS]: снимок уже
+     * подогнан под бюджет, и если за этот срок он не уехал, дело не в его размере.
+     */
+    fun onPhotoPicked(source: String) = sending { chat -> messangerInteractor.sendPhoto(chat, source) }
+
+    /**
+     * Отправляет текущее место.
+     *
+     * Разрешение спрашивает экран и зовёт это только с ним. Место может не определиться и с
+     * разрешением — выключенная геолокация, отказ приёмника, — и тогда в ленту ничего не
+     * уходит, а причина показывается строкой.
+     */
+    fun onLocationPicked() = sending { chat ->
+        val place = locationSource.current() ?: return@sending Result.failure(IllegalStateException(Constants.PLACE_UNKNOWN))
+
+        messangerInteractor.sendLocation(chat, place)
+    }
+
+    /** Разрешения на место не дали: отправлять точку нечем. */
+    fun onLocationDenied() = messangerScreenState.update { current ->
+        if (current is MessangerUiState.Content) current.copy(error = Constants.PLACE_DENIED) else current
+    }
+
+    /** Раскрывает снимок реплики [messageId] на весь экран. */
+    fun onPhotoOpened(messageId: String) = messangerScreenState.update { current ->
+        if (current is MessangerUiState.Content) current.copy(opened = current.photos[messageId]) else current
+    }
+
+    /** Закрывает раскрытый снимок. */
+    fun onPhotoClosed() = messangerScreenState.update { current ->
+        if (current is MessangerUiState.Content) current.copy(opened = null) else current
+    }
+
+    /**
+     * Общая часть отправки: срок, признак отправки и разбор итога.
+     *
+     * Набранный текст очищается только у успешной отправки текста — вложение его не трогает
+     * вовсе: подпись к снимку никто не набирал.
+     */
+    private fun sending(clearsDraft: Boolean = false, send: suspend (Chat) -> Result<Unit>) {
         val state = messangerScreenState.value as? MessangerUiState.Content ?: return
         val chat = chat ?: return
-        val text = state.draft.trim()
-        if (text.isEmpty() || state.isSending) return
+        if (state.isSending) return
 
         messangerScreenState.update { current ->
             if (current is MessangerUiState.Content) current.copy(isSending = true, error = null) else current
         }
 
         viewModelScope.launch {
-            val result = withTimeoutOrNull(Constants.SUBMIT_TIMEOUT_MS) {
-                messangerInteractor.send(chat, text)
-            }
+            val result = withTimeoutOrNull(Constants.SUBMIT_TIMEOUT_MS) { send(chat) }
 
             messangerScreenState.update { current ->
                 if (current !is MessangerUiState.Content) return@update current
 
                 when {
                     result == null -> current.copy(isSending = false, error = Constants.SERVER_SILENT)
-                    result.isSuccess -> current.copy(isSending = false, draft = "")
+                    result.isSuccess -> current.copy(isSending = false, draft = if (clearsDraft) "" else current.draft)
                     else -> current.copy(
                         isSending = false,
                         error = result.exceptionOrNull()?.message ?: Constants.SERVER_SILENT,
                     )
+                }
+            }
+        }
+    }
+
+    /**
+     * Догружает снимки показанных реплик.
+     *
+     * Заказываем **только новые**, включая не открывшиеся: снимок лежит в неизменяемом
+     * документе, поэтому второй раз спрашивать его незачем, а лента перечитывается на каждую
+     * реплику.
+     */
+    private fun loadPhotos(dialogue: Dialogue) {
+        val pending = dialogue.replies.filter { it.photo != null && askedPhotos.add(it.id) }
+        if (pending.isEmpty()) return
+
+        viewModelScope.launch {
+            pending.forEach { reply ->
+                val attachment = reply.photo ?: return@forEach
+                val image = photoInteractor.photo(dialogue.chat, reply.id, attachment.keyVersion) ?: return@forEach
+
+                messangerScreenState.update { current ->
+                    if (current is MessangerUiState.Content) {
+                        current.copy(photos = current.photos + (reply.id to image))
+                    } else {
+                        current
+                    }
                 }
             }
         }
@@ -181,6 +262,7 @@ class MessangerViewModel(
         messangerScreenState.value = MessangerUiState.Loading
         // Подписка начинается с пустого состояния, поэтому и спрошенных помним заново.
         askedMembers.clear()
+        askedPhotos.clear()
 
         subscription = viewModelScope.launch {
             messangerInteractor.observeDialogue(convoId, uid).collect { snapshot ->
@@ -199,6 +281,7 @@ class MessangerViewModel(
                             }
                         }
                         loadAvatars(dialogue.chat)
+                        loadPhotos(dialogue)
                     }
                     .onFailure { error ->
                         val gone = error is ConversationGone

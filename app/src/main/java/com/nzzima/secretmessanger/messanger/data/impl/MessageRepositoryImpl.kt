@@ -10,6 +10,7 @@ import com.nzzima.secretmessanger.chats.domain.models.Moment
 import com.nzzima.secretmessanger.messanger.domain.api.MessageRepository
 import com.nzzima.secretmessanger.messanger.domain.models.Message
 import com.nzzima.secretmessanger.messanger.domain.models.MessageKind
+import com.nzzima.secretmessanger.photo.domain.models.PhotoSize
 import com.nzzima.secretmessanger.utils.constants.Constants
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -42,14 +43,14 @@ class MessageRepositoryImpl(private val firestore: FirebaseFirestore) : MessageR
         awaitClose(registration::remove)
     }
 
-    override suspend fun send(convoId: String, message: Message): Result<Unit> = runCatching {
+    override suspend fun send(convoId: String, message: Message, preview: String): Result<Unit> = runCatching {
         val date = message.date.toTimestamp()
 
         // Время у шапки и у реплики одно и то же значение: список диалогов сортируется
         // по шапке, лента — по реплике, и разъехаться им нельзя.
         firestore.collection(Constants.CONVERSATION_COLLECTION)
             .document(convoId)
-            .set(message.header(date), SetOptions.merge())
+            .set(message.header(date, preview), SetOptions.merge())
             .await()
 
         firestore.messages(convoId)
@@ -69,8 +70,8 @@ class MessageRepositoryImpl(private val firestore: FirebaseFirestore) : MessageR
  * там логин меняется в профиле, а на Android его сменить нечем — переписывать было бы
  * нечего. Появится смена логина — появится и запись.
  */
-private fun Message.header(date: Timestamp): Map<String, Any> = buildMap {
-    put(Constants.LAST_MESSAGE_FIELD, body)
+private fun Message.header(date: Timestamp, preview: String): Map<String, Any> = buildMap {
+    put(Constants.LAST_MESSAGE_FIELD, preview)
     put(Constants.DATE_FIELD, date)
 
     if (encrypted) {
@@ -82,18 +83,36 @@ private fun Message.header(date: Timestamp): Map<String, Any> = buildMap {
 /**
  * Документ реплики.
  *
- * Поле `type` не пишется: Android отправляет только текст, а текстовая реплика вида не
- * имеет — так же её пишет iOS.
+ * У текстовой реплики поля `type` нет вовсе — так же её пишет iOS. У вложения оно есть, и у
+ * снимка вместе с ним едут размеры: числами, а не строкой, потому что iOS читает их как
+ * `Double`.
  */
 private fun Message.payload(date: Timestamp): Map<String, Any> = buildMap {
     put(Constants.SENDER_ID_FIELD, senderId)
     put(Constants.MESSAGE_FIELD, body)
     put(Constants.DATE_FIELD, date)
 
+    kind.field()?.let { put(Constants.TYPE_FIELD, it) }
+
+    // Через метку: внутри buildMap `size` — это размер самой карты.
+    this@payload.size?.let {
+        put(Constants.WIDTH_FIELD, it.width.toDouble())
+        put(Constants.HEIGHT_FIELD, it.height.toDouble())
+    }
+
     if (encrypted) {
         put(Constants.ENCRYPTED_FIELD, 1)
         put(Constants.VERSION_FIELD, version)
     }
+}
+
+/** Значение поля `type`; `null` у текста — он вида не имеет. */
+private fun MessageKind.field(): String? = when (this) {
+    MessageKind.Text -> null
+    MessageKind.Photo -> Constants.PHOTO_TYPE
+    MessageKind.Voice -> Constants.VOICE_TYPE
+    MessageKind.Location -> Constants.LOCATION_TYPE
+    MessageKind.KeyNotice -> Constants.KEY_NOTICE_TYPE
 }
 
 /**
@@ -111,7 +130,21 @@ private fun DocumentSnapshot.toMessage() = Message(
     version = getLong(Constants.VERSION_FIELD)?.toInt() ?: 0,
     date = getTimestamp(Constants.DATE_FIELD)?.toMoment() ?: Moment.of(System.currentTimeMillis()),
     kind = getString(Constants.TYPE_FIELD).toKind(),
+    size = photoSize(),
 )
+
+/**
+ * Размеры снимка из документа; `null` — их там нет.
+ *
+ * Читаются числом, а пишутся `Double`: iOS кладёт `CGFloat`, и целых значений в базе не
+ * бывает даже у целых сторон.
+ */
+private fun DocumentSnapshot.photoSize(): PhotoSize? {
+    val width = getDouble(Constants.WIDTH_FIELD)?.toInt() ?: return null
+    val height = getDouble(Constants.HEIGHT_FIELD)?.toInt() ?: return null
+
+    return PhotoSize(width, height).takeIf { it.width > 0 && it.height > 0 }
+}
 
 /** Вид реплики из поля `type`; незнакомое значение читается как текст. */
 private fun String?.toKind(): MessageKind = when (this) {

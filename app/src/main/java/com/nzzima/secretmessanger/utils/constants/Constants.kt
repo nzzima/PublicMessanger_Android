@@ -14,6 +14,7 @@ object Constants {
     const val CONVERSATION_COLLECTION = "conversation"
     const val MESSAGES_COLLECTION = "messages"
     const val AVATARS_COLLECTION = "avatars"
+    const val IMAGES_COLLECTION = "images"
 
     const val UID_FIELD = "uid"
     const val LOGIN_FIELD = "login"
@@ -31,6 +32,10 @@ object Constants {
     const val LAST_VERSION_FIELD = "lastV"
     const val DATE_FIELD = "date"
     const val READ_UP_TO_FIELD = "readUpTo"
+
+    const val IMAGE_DATA_FIELD = "data"
+    const val WIDTH_FIELD = "width"
+    const val HEIGHT_FIELD = "height"
 
     const val AVATAR_DATA_FIELD = "data"
     const val AVATAR_VERSION_FIELD = "version"
@@ -77,6 +82,16 @@ object Constants {
     const val MESSAGE_WINDOW = 50L
 
     const val FIRST_KEY_VERSION = 1
+
+    /** Срок ожидания точки: дольше человек уже не ждёт, а GPS в помещении молчит вечно. */
+    const val LOCATION_TIMEOUT_MS = 8_000L
+
+    /** Насколько старой точке ещё верим без нового замера. */
+    const val LOCATION_FRESH_MS = 5 * 60 * 1000L
+
+    const val PHOTO_SIDE = 1280
+    const val PHOTO_BUDGET = 700_000
+    const val PHOTO_CACHE_SIZE = 20
 
     const val AVATAR_SIDE = 320
     const val AVATAR_BUDGET = 200_000
@@ -140,6 +155,14 @@ object Constants {
     const val SAVE = "Сохранить"
     const val NOTE_PLACEHOLDER = "Заметка о себе"
     const val GROUP_CHAT = "Группа"
+    const val ATTACH = "Прикрепить"
+    const val ATTACH_PHOTO = "Фото"
+    const val ATTACH_LOCATION = "Геопозиция"
+    const val PHOTO_TOO_LARGE = "Это изображение не удалось уместить в размер сообщения"
+    const val PLACE_UNKNOWN = "Телефон не смог определить место"
+    const val PLACE_DENIED = "Без доступа к месту отправить точку нечем"
+    const val OPEN_PHOTO = "Открыть снимок"
+    const val CLOSE_PHOTO = "Закрыть снимок"
     const val CHANGE_AVATAR = "Изменить аватар"
     const val REMOVE_AVATAR = "Убрать фото"
     const val AVATAR_TOO_LARGE = "Это изображение не удалось уместить в размер аватара"

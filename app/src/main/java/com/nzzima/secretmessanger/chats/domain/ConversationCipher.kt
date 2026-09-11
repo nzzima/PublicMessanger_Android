@@ -27,3 +27,24 @@ fun ConversationKeys.openText(chat: Chat, payload: String, version: Int): String
 fun ConversationKeys.sealText(chat: Chat, text: String): String? =
     open(chat.id, chat.selfId, chat.keyVersion, chat.convoKeys)
         ?.let { key -> CryptoBox.seal(text, key) }
+
+/**
+ * Открытые байты вложения [sealed], закрытого ключом версии [version].
+ *
+ * Версия берётся у самой реплики по той же причине, что у текста: снимок, отправленный до
+ * ротации, открывается только прежним ключом. На iOS этот случай был дефектом — `loadVoice`
+ * брал текущую версию, и записанное до удаления участника переставало открываться.
+ */
+fun ConversationKeys.openBytes(chat: Chat, sealed: ByteArray, version: Int): ByteArray? =
+    open(chat.id, chat.selfId, version, chat.convoKeys)
+        ?.let { key -> runCatching { CryptoBox.open(sealed, key) }.getOrNull() }
+
+/**
+ * Запечатывает байты вложения текущим ключом диалога.
+ *
+ * @return `null`, если ключа текущей версии у нас нет: класть снимок в базу открытым мы не
+ *   станем — то же правило, что у текста.
+ */
+fun ConversationKeys.sealBytes(chat: Chat, raw: ByteArray): ByteArray? =
+    open(chat.id, chat.selfId, chat.keyVersion, chat.convoKeys)
+        ?.let { key -> CryptoBox.seal(raw, key) }

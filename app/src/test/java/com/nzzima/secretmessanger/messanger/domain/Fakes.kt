@@ -1,9 +1,14 @@
 package com.nzzima.secretmessanger.messanger.domain
 
+import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.Moment
+import com.nzzima.secretmessanger.messanger.domain.api.LocationSource
 import com.nzzima.secretmessanger.messanger.domain.api.MessageRepository
 import com.nzzima.secretmessanger.messanger.domain.models.Message
 import com.nzzima.secretmessanger.messanger.domain.models.MessageKind
+import com.nzzima.secretmessanger.messanger.domain.models.Place
+import com.nzzima.secretmessanger.photo.domain.api.PhotoInteractor
+import com.nzzima.secretmessanger.photo.domain.models.PhotoSize
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -25,15 +30,19 @@ class FakeMessageRepository : MessageRepository {
     /** Отправленное: диалог и сама реплика, в порядке отправки. */
     val sent = mutableListOf<Pair<String, Message>>()
 
+    /** Превью, ушедшие в шапку, в том же порядке. */
+    val previews = mutableListOf<String>()
+
     /** Чем отказывает отправка; `null` — отправка проходит. */
     var refusal: Throwable? = null
 
     override fun observeLast(convoId: String, limit: Long): Flow<Result<List<Message>>> = snapshots
 
-    override suspend fun send(convoId: String, message: Message): Result<Unit> {
+    override suspend fun send(convoId: String, message: Message, preview: String): Result<Unit> {
         refusal?.let { return Result.failure(it) }
 
         sent += convoId to message
+        previews += preview
         return Result.success(Unit)
     }
 
@@ -57,6 +66,7 @@ fun message(
     version: Int = 1,
     date: Moment = Moment(0, 0),
     kind: MessageKind = MessageKind.Text,
+    size: PhotoSize? = null,
 ) = Message(
     id = id,
     senderId = senderId,
@@ -65,4 +75,46 @@ fun message(
     version = version,
     date = date,
     kind = kind,
+    size = size,
 )
+
+/** [PhotoInteractor] в памяти: отдаёт заданные байты и помнит, о чём спрашивали. */
+class FakePhotoInteractor(
+    private val image: ByteArray? = byteArrayOf(7, 7, 7),
+    private val size: PhotoSize = PhotoSize(800, 600),
+) : PhotoInteractor {
+
+    /** Пары «реплика + версия ключа», снимки которых заказывали. */
+    val requested = mutableListOf<Pair<String, Int>>()
+
+    /** Приложенное: пары «реплика + адрес снимка», в порядке отправки. */
+    val attached = mutableListOf<Pair<String, String>>()
+
+    /** Чем отказывает вложение; `null` — проходит. */
+    var refusal: Throwable? = null
+
+    override suspend fun photo(chat: Chat, messageId: String, version: Int): ByteArray? {
+        requested += messageId to version
+        return image
+    }
+
+    override suspend fun attach(chat: Chat, messageId: String, source: String): Result<PhotoSize> {
+        refusal?.let { return Result.failure(it) }
+
+        attached += messageId to source
+        return Result.success(size)
+    }
+}
+
+/** [LocationSource] в памяти: отдаёт заданную точку либо ничего. */
+class FakeLocationSource(private val place: Place? = Place(55.75, 37.62)) : LocationSource {
+
+    /** Сколько раз спрашивали место. */
+    var requests = 0
+        private set
+
+    override suspend fun current(): Place? {
+        requests++
+        return place
+    }
+}

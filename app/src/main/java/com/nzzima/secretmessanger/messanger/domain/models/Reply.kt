@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.messanger.domain.models
 
+
 /**
  * Реплика в том виде, в каком её показывает лента.
  *
@@ -16,6 +17,10 @@ package com.nzzima.secretmessanger.messanger.domain.models
  * @property date время отправки в миллисекундах эпохи — для показа этого хватает.
  * @property read прочитали ли реплику все, кроме нас. Считается только для своих: чужой
  *   реплике «прочитано» ничего не сообщает — она и так перед глазами.
+ * @property photo снимок; `null` — реплика не снимок. Байты приезжают отдельно и позже:
+ *   пузырь верстается по размерам, иначе лента прыгала бы на каждой догрузке.
+ * @property place точка на карте; `null` — реплика не точка либо координаты не
+ *   разобрались (чужой формат или нет ключа).
  * @property service отметка о смене ключа: строка посреди ленты, без пузыря и автора.
  */
 data class Reply(
@@ -28,4 +33,6 @@ data class Reply(
     val date: Long,
     val read: Boolean,
     val service: Boolean,
+    val photo: PhotoAttachment? = null,
+    val place: Place? = null,
 )

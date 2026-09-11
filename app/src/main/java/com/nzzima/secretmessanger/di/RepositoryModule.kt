@@ -21,7 +21,13 @@ import com.nzzima.secretmessanger.crypto.data.impl.PublicKeyRepositoryImpl
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityKeyStore
 import com.nzzima.secretmessanger.crypto.domain.api.PublicKeyRepository
 import com.nzzima.secretmessanger.messanger.data.impl.MessageRepositoryImpl
+import com.nzzima.secretmessanger.messanger.data.impl.LocationSourceImpl
+import com.nzzima.secretmessanger.messanger.domain.api.LocationSource
 import com.nzzima.secretmessanger.messanger.domain.api.MessageRepository
+import com.nzzima.secretmessanger.photo.data.impl.PhotoEncoderImpl
+import com.nzzima.secretmessanger.photo.data.impl.PhotoRepositoryImpl
+import com.nzzima.secretmessanger.photo.domain.api.PhotoEncoder
+import com.nzzima.secretmessanger.photo.domain.api.PhotoRepository
 import com.nzzima.secretmessanger.profile.data.impl.ProfileReaderImpl
 import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.session.data.impl.SessionRepositoryImpl
@@ -78,6 +84,18 @@ val repositoryModule = module {
 
     single<AvatarEncoder> {
         AvatarEncoderImpl(androidContext())
+    }
+
+    single<PhotoRepository> {
+        PhotoRepositoryImpl(get())
+    }
+
+    single<PhotoEncoder> {
+        PhotoEncoderImpl(androidContext())
+    }
+
+    single<LocationSource> {
+        LocationSourceImpl(androidContext())
     }
 
     single<MessageRepository> {

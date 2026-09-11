@@ -6,6 +6,8 @@ import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
 import com.nzzima.secretmessanger.chats.domain.models.Moment
 import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.crypto.domain.FakeConversationKeys
+import com.nzzima.secretmessanger.messanger.domain.FakeLocationSource
+import com.nzzima.secretmessanger.messanger.domain.FakePhotoInteractor
 import com.nzzima.secretmessanger.profile.domain.FakeCompanionProfiles
 import com.nzzima.secretmessanger.crypto.domain.models.CryptoFailure
 import com.nzzima.secretmessanger.messanger.domain.FakeMessageRepository
@@ -26,6 +28,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import com.nzzima.secretmessanger.messanger.domain.models.MessageKind
+import com.nzzima.secretmessanger.photo.domain.models.PhotoSize
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -42,6 +48,8 @@ class MessangerViewModelTest {
     private val noKeys = FakeConversationKeys()
 
     private val profiles = FakeCompanionProfiles()
+    private val photos = FakePhotoInteractor()
+    private val places = FakeLocationSource()
     private val avatars = FakeAvatarInteractor(image = byteArrayOf(1, 2, 3))
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
@@ -51,10 +59,27 @@ class MessangerViewModelTest {
     private fun viewModel() = MessangerViewModel(
         "uid-1_uid-2",
         SessionInteractorImpl(sessions, sessions, sessions),
-        MessangerInteractorImpl(conversations, messages, noKeys),
+        MessangerInteractorImpl(conversations, messages, noKeys, photos),
         profiles,
         avatars,
+        photos,
+        places,
     )
+
+    /** Та же модель, но телефон места не знает: геолокация выключена или приёмник молчит. */
+    private fun viewModelWithoutPlace() = MessangerViewModel(
+        "uid-1_uid-2",
+        SessionInteractorImpl(sessions, sessions, sessions),
+        MessangerInteractorImpl(conversations, messages, noKeys, photos),
+        profiles,
+        avatars,
+        photos,
+        FakeLocationSource(place = null),
+    ).also {
+        conversations.sendChat(chat())
+        messages.send(listOf(message(body = "привет")))
+        dispatcher.scheduler.advanceUntilIdle()
+    }
 
     private fun MessangerViewModel.state() = observeMessangerScreenState().value
 
@@ -315,4 +340,101 @@ class MessangerViewModelTest {
         assertTrue(model.content().avatars.isEmpty())
         assertEquals("спросить о нём всё равно надо было — ровно раз", 1, profiles.requests("uid-2"))
     }
+
+    @Test
+    fun `снимки показанных реплик догружаются`() = runTest(dispatcher) {
+        conversations.sendChat(chat())
+        messages.send(listOf(message(id = "m-1", kind = MessageKind.Photo, size = PhotoSize(800, 600))))
+        val model = viewModel().also { dispatcher.scheduler.advanceUntilIdle() }
+
+        assertEquals(listOf("m-1" to 1), photos.requested)
+        assertEquals(listOf(7.toByte(), 7, 7), model.content().photos.getValue("m-1").toList())
+    }
+
+    @Test
+    fun `снимок заказывается один раз, а не на каждую реплику`() = runTest(dispatcher) {
+        conversations.sendChat(chat())
+        messages.send(listOf(message(id = "m-1", kind = MessageKind.Photo, size = PhotoSize(800, 600))))
+        viewModel().also { dispatcher.scheduler.advanceUntilIdle() }
+
+        messages.send(
+            listOf(
+                message(id = "m-1", kind = MessageKind.Photo, size = PhotoSize(800, 600)),
+                message(id = "m-2", body = "и текст"),
+            ),
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("отправленное неизменяемо — второй раз качать нечего", 1, photos.requested.size)
+    }
+
+    @Test
+    fun `выбранный снимок уходит в диалог`() = runTest(dispatcher) {
+        val model = opened()
+
+        model.onPhotoPicked("content://pic")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, photos.attached.size)
+        assertEquals("content://pic", photos.attached.single().second)
+    }
+
+    @Test
+    fun `точка спрашивается у телефона и уходит в диалог`() = runTest(dispatcher) {
+        val model = opened()
+
+        model.onLocationPicked()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, places.requests)
+        assertEquals(MessageKind.Location, messages.sent.single().second.kind)
+    }
+
+    @Test
+    fun `неопределившееся место показывается строкой, а в базу не уходит`() = runTest(dispatcher) {
+        val model = viewModelWithoutPlace()
+
+        model.onLocationPicked()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(Constants.PLACE_UNKNOWN, model.content().error)
+        assertTrue(messages.sent.isEmpty())
+    }
+
+    @Test
+    fun `без разрешения на место в ленту ничего не уходит`() = runTest(dispatcher) {
+        val model = opened()
+
+        model.onLocationDenied()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(Constants.PLACE_DENIED, model.content().error)
+        assertEquals(0, places.requests)
+        assertTrue(messages.sent.isEmpty())
+    }
+
+    @Test
+    fun `вложение не трогает набранный текст`() = runTest(dispatcher) {
+        val model = opened()
+        model.onDraftChange("допишу потом")
+
+        model.onPhotoPicked("content://pic")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("подпись к снимку никто не набирал", "допишу потом", model.content().draft)
+    }
+
+    @Test
+    fun `раскрытый снимок закрывается`() = runTest(dispatcher) {
+        conversations.sendChat(chat())
+        messages.send(listOf(message(id = "m-1", kind = MessageKind.Photo, size = PhotoSize(800, 600))))
+        val model = viewModel().also { dispatcher.scheduler.advanceUntilIdle() }
+
+        model.onPhotoOpened("m-1")
+        assertNotNull(model.content().opened)
+
+        model.onPhotoClosed()
+        assertNull(model.content().opened)
+    }
 }
+

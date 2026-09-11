@@ -40,7 +40,7 @@ val viewModelModule = module {
     }
 
     viewModel { (convoId: String) ->
-        MessangerViewModel(convoId, get(), get(), get(), get())
+        MessangerViewModel(convoId, get(), get(), get(), get(), get(), get())
     }
 
     viewModel { (userId: String, login: String) ->
