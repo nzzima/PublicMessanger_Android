@@ -111,7 +111,7 @@ class ChatsInteractorTest {
     }
 
     @Test
-    fun `диалог без единого сообщения в список не попадает`() = runTest {
+    fun `диалог без единого сообщения остаётся в списке с подписью`() = runTest {
         conversations.send(
             listOf(
                 header(chat = chat(id = "пустой"), lastMessage = ""),
@@ -119,7 +119,12 @@ class ChatsInteractorTest {
             ),
         )
 
-        assertEquals(listOf("живой"), conversations().map { it.chat.id })
+        val list = conversations()
+
+        // До 11.09.2026 пустой отбрасывался, и заведённая группа пропадала насовсем: другого
+        // входа в неё нет, а в диалог на двоих можно вернуться из профиля собеседника.
+        assertEquals(setOf("пустой", "живой"), list.map { it.chat.id }.toSet())
+        assertEquals(Constants.MESSAGES_EMPTY, list.first { it.chat.id == "пустой" }.preview)
     }
 
     @Test
