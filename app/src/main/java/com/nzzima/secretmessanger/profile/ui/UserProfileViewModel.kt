@@ -2,6 +2,7 @@ package com.nzzima.secretmessanger.profile.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
@@ -29,6 +30,7 @@ class UserProfileViewModel(
     private val sessionInteractor: SessionInteractor,
     private val profileInteractor: ProfileInteractor,
     private val conversationStarter: ConversationStarter,
+    private val avatarInteractor: AvatarInteractor,
 ) : ViewModel() {
 
     private val userProfileScreenState =
@@ -90,6 +92,17 @@ class UserProfileViewModel(
         if (current is UserProfileUiState.Content) current.copy(opened = null) else current
     }
 
+    /** Догружает аватар собеседника; сменившийся приедет с новой версией. */
+    private fun loadAvatar(uid: String, version: Int) {
+        viewModelScope.launch {
+            val image = avatarInteractor.avatar(uid, version)
+
+            userProfileScreenState.update { current ->
+                if (current is UserProfileUiState.Content) current.copy(avatar = image) else current
+            }
+        }
+    }
+
     private fun subscribe() {
         subscription?.cancel()
         userProfileScreenState.value = UserProfileUiState.Loading(fallbackLogin)
@@ -111,6 +124,7 @@ class UserProfileViewModel(
                                 UserProfileUiState.Content(name, profile)
                             }
                         }
+                        loadAvatar(profile.id, profile.avatarVersion)
                     }
                     .onFailure { error ->
                         userProfileScreenState.value = UserProfileUiState.Failed(

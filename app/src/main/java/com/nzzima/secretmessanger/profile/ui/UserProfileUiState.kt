@@ -28,6 +28,7 @@ sealed interface UserProfileUiState {
     data class Content(
         override val name: String,
         val profile: Profile,
+        val avatar: ByteArray? = null,
         val isOpening: Boolean = false,
         val opened: String? = null,
         val error: String? = null,

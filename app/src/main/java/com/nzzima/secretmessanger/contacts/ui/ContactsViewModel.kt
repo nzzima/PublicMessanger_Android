@@ -2,13 +2,16 @@ package com.nzzima.secretmessanger.contacts.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
+import com.nzzima.secretmessanger.contacts.domain.models.Contact
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -20,6 +23,7 @@ import kotlinx.coroutines.launch
 class ContactsViewModel(
     private val sessionInteractor: SessionInteractor,
     private val contactsInteractor: ContactsInteractor,
+    private val avatarInteractor: AvatarInteractor,
 ) : ViewModel() {
 
     private val contactsScreenState = MutableStateFlow<ContactsUiState>(ContactsUiState.Loading)
@@ -35,6 +39,30 @@ class ContactsViewModel(
     /** Подписывается на список заново — нужна после отказа. */
     fun retry() = subscribe()
 
+    /**
+     * Догружает аватары к показанным контактам.
+     *
+     * Грузятся сразу все, у кого аватар есть, а не по мере появления строк на экране, как на
+     * iOS. Разница честная: там список рассчитан на длинный, здесь в нём десяток человек, а
+     * повторные загрузки всё равно снимает кэш интерактора. Появятся сотни — придётся
+     * грузить по строкам.
+     */
+    private fun loadAvatars(contacts: List<Contact>) {
+        viewModelScope.launch {
+            contacts.filter { it.avatarVersion > 0 }.forEach { contact ->
+                val image = avatarInteractor.avatar(contact.id, contact.avatarVersion) ?: return@forEach
+
+                contactsScreenState.update { current ->
+                    if (current is ContactsUiState.Content) {
+                        current.copy(avatars = current.avatars + (contact.id to image))
+                    } else {
+                        current
+                    }
+                }
+            }
+        }
+    }
+
     private fun subscribe() {
         val uid = sessionInteractor.observeSession().value.uidOrNull ?: return
 
@@ -44,9 +72,18 @@ class ContactsViewModel(
         subscription = viewModelScope.launch {
             contactsInteractor.observeContacts(uid).collect { snapshot ->
                 snapshot
-                    .onSuccess {
-                        contactsScreenState.value =
-                            if (it.isEmpty()) ContactsUiState.Empty else ContactsUiState.Content(it)
+                    .onSuccess { contacts ->
+                        contactsScreenState.update { current ->
+                            when {
+                                contacts.isEmpty() -> ContactsUiState.Empty
+                                // Уже загруженные аватары переживают снимок: список
+                                // перерисовывается на любое изменение любого профиля, и
+                                // ронять картинки на каждое чужое переименование незачем.
+                                current is ContactsUiState.Content -> current.copy(contacts = contacts)
+                                else -> ContactsUiState.Content(contacts)
+                            }
+                        }
+                        loadAvatars(contacts)
                     }
                     .onFailure {
                         contactsScreenState.value = ContactsUiState.Failed(it.message ?: Constants.SERVER_SILENT)

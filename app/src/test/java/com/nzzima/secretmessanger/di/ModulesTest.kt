@@ -11,6 +11,9 @@ import com.nzzima.secretmessanger.auth.domain.api.ProfileRepairInteractor
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationInteractor
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationRepository
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
+import com.nzzima.secretmessanger.avatar.domain.api.AvatarEncoder
+import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
+import com.nzzima.secretmessanger.avatar.domain.api.AvatarRepository
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
@@ -83,6 +86,8 @@ class ModulesTest {
                 MessageRepository::class,
                 ContactsRepository::class,
                 ProfileReader::class,
+                AvatarRepository::class,
+                AvatarEncoder::class,
             ),
         )
 
@@ -97,6 +102,7 @@ class ModulesTest {
                 ContactsInteractor::class,
                 ProfileInteractor::class,
                 ProfileEditor::class,
+                AvatarInteractor::class,
                 MessangerInteractor::class,
                 ConversationStarter::class,
             ),

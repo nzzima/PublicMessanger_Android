@@ -24,27 +24,27 @@ val viewModelModule = module {
     }
 
     viewModel {
-        ChatsViewModel(get(), get())
+        ChatsViewModel(get(), get(), get(), get())
     }
 
     viewModel {
-        ContactsViewModel(get(), get())
+        ContactsViewModel(get(), get(), get())
     }
 
     viewModel {
-        ProfileViewModel(get(), get())
+        ProfileViewModel(get(), get(), get())
     }
 
     viewModel {
-        EditProfileViewModel(get(), get(), get())
+        EditProfileViewModel(get(), get(), get(), get())
     }
 
     viewModel { (convoId: String) ->
-        MessangerViewModel(convoId, get(), get())
+        MessangerViewModel(convoId, get(), get(), get(), get())
     }
 
     viewModel { (userId: String, login: String) ->
-        UserProfileViewModel(userId, login, get(), get(), get())
+        UserProfileViewModel(userId, login, get(), get(), get(), get())
     }
 
     viewModel {

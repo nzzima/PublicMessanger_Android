@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.sp
 import com.nzzima.secretmessanger.ui.theme.Ink
 import com.nzzima.secretmessanger.ui.theme.InkDim
 
+/** Размер кружка аватара на экранах профиля. */
+internal val PROFILE_AVATAR = 120.dp
+
 /**
  * Строка профиля: подпись, значение и разделитель под ними.
  *

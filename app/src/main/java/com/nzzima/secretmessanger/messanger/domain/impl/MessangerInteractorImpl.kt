@@ -82,6 +82,8 @@ class MessangerInteractorImpl(
         // Подпись нужна только чужим репликам в группе: в диалоге на двоих автор
         // очевиден из стороны пузыря.
         author = if (chat.isGroup && senderId != chat.selfId) chat.logins[senderId].orEmpty() else "",
+        authorId = senderId,
+        authorName = chat.logins[senderId].orEmpty(),
         outgoing = senderId == chat.selfId,
         date = date.millis,
         // Галочки только на своих: чужой реплике «прочитано» ничего не сообщает.

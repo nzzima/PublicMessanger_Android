@@ -6,6 +6,8 @@ import com.nzzima.secretmessanger.auth.domain.api.RegistrationInteractor
 import com.nzzima.secretmessanger.auth.domain.impl.AuthenticationInteractorImpl
 import com.nzzima.secretmessanger.auth.domain.impl.ProfileRepairInteractorImpl
 import com.nzzima.secretmessanger.auth.domain.impl.RegistrationInteractorImpl
+import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
+import com.nzzima.secretmessanger.avatar.domain.impl.AvatarInteractorImpl
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
 import com.nzzima.secretmessanger.chats.domain.impl.ChatsInteractorImpl
@@ -80,5 +82,10 @@ val interactorModule = module {
 
     single<ProfileEditor> {
         ProfileEditorImpl(get(), get(), get())
+    }
+
+    // Одиночка ради кэша картинок: второй экземпляр качал бы их заново.
+    single<AvatarInteractor> {
+        AvatarInteractorImpl(get(), get(), get())
     }
 }

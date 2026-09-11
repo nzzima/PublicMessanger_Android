@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.profile.ui
 
+import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
 import com.nzzima.secretmessanger.profile.domain.FakeProfileReader
 import com.nzzima.secretmessanger.profile.domain.impl.ProfileInteractorImpl
@@ -42,6 +43,7 @@ class UserProfileViewModelTest {
         SessionInteractorImpl(sessions, sessions, sessions),
         ProfileInteractorImpl(profiles),
         starter,
+        FakeAvatarInteractor(),
     )
 
     private fun UserProfileViewModel.state() = observeUserProfileScreenState().value

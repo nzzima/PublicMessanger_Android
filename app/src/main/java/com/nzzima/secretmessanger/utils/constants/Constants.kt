@@ -13,6 +13,7 @@ object Constants {
     const val USERS_COLLECTION = "users"
     const val CONVERSATION_COLLECTION = "conversation"
     const val MESSAGES_COLLECTION = "messages"
+    const val AVATARS_COLLECTION = "avatars"
 
     const val UID_FIELD = "uid"
     const val LOGIN_FIELD = "login"
@@ -30,6 +31,10 @@ object Constants {
     const val LAST_VERSION_FIELD = "lastV"
     const val DATE_FIELD = "date"
     const val READ_UP_TO_FIELD = "readUpTo"
+
+    const val AVATAR_DATA_FIELD = "data"
+    const val AVATAR_VERSION_FIELD = "version"
+    const val PROFILE_AVATAR_VERSION_FIELD = "avatarVersion"
 
     const val SENDER_ID_FIELD = "senderId"
     const val MESSAGE_FIELD = "message"
@@ -72,6 +77,10 @@ object Constants {
     const val MESSAGE_WINDOW = 50L
 
     const val FIRST_KEY_VERSION = 1
+
+    const val AVATAR_SIDE = 320
+    const val AVATAR_BUDGET = 200_000
+    const val AVATAR_CACHE_SIZE = 100
 
     const val EMAIL_TAKEN = "Эта почта уже занята"
     const val WEAK_PASSWORD = "Пароль слишком простой"
@@ -130,6 +139,10 @@ object Constants {
     const val EDIT_PROFILE_TITLE = "Редактирование"
     const val SAVE = "Сохранить"
     const val NOTE_PLACEHOLDER = "Заметка о себе"
+    const val GROUP_CHAT = "Группа"
+    const val CHANGE_AVATAR = "Изменить аватар"
+    const val REMOVE_AVATAR = "Убрать фото"
+    const val AVATAR_TOO_LARGE = "Это изображение не удалось уместить в размер аватара"
     const val SIGN_OUT_QUESTION = "Вы действительно хотите выйти?"
     const val SIGN_OUT_CONFIRM = "Выйти из аккаунта"
     const val CANCEL = "Отмена"

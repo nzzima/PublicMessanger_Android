@@ -36,6 +36,8 @@ class ProfileReaderImpl(private val firestore: FirebaseFirestore) : ProfileReade
                             login = snapshot.getString(Constants.LOGIN_FIELD).orEmpty(),
                             name = snapshot.getString(Constants.NAME_FIELD).orEmpty(),
                             someInfo = snapshot.getString(Constants.SOME_INFO_FIELD).orEmpty(),
+                            avatarVersion = snapshot.getLong(Constants.PROFILE_AVATAR_VERSION_FIELD)
+                                ?.toInt() ?: 0,
                         ),
                     ),
                 )

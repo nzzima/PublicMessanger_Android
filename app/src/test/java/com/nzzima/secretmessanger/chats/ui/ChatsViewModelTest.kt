@@ -1,10 +1,12 @@
 package com.nzzima.secretmessanger.chats.ui
 
+import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.chats.domain.FakeConversationRepository
 import com.nzzima.secretmessanger.chats.domain.chat
 import com.nzzima.secretmessanger.chats.domain.header
 import com.nzzima.secretmessanger.chats.domain.impl.ChatsInteractorImpl
 import com.nzzima.secretmessanger.crypto.domain.FakeConversationKeys
+import com.nzzima.secretmessanger.profile.domain.FakeCompanionProfiles
 import com.nzzima.secretmessanger.session.domain.FakeSessionRepository
 import com.nzzima.secretmessanger.session.domain.impl.SessionInteractorImpl
 import com.nzzima.secretmessanger.session.domain.models.Session
@@ -19,6 +21,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -33,6 +36,9 @@ class ChatsViewModelTest {
     /** Ключей диалогов ни у кого нет: превью здесь не проверяется, это дело интерактора. */
     private val noKeys = FakeConversationKeys()
 
+    private val profiles = FakeCompanionProfiles()
+    private val avatars = FakeAvatarInteractor(image = byteArrayOf(1, 2, 3))
+
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 
     @After fun tearDown() = Dispatchers.resetMain()
@@ -40,6 +46,8 @@ class ChatsViewModelTest {
     private fun viewModel() = ChatsViewModel(
         SessionInteractorImpl(sessions, sessions, sessions),
         ChatsInteractorImpl(conversations, noKeys),
+        profiles,
+        avatars,
     )
 
     private fun ChatsViewModel.state() = observeChatsScreenState().value
@@ -157,5 +165,58 @@ class ChatsViewModelTest {
 
         assertEquals(0, conversations.subscriptions)
         assertSame(ChatsUiState.Loading, model.state())
+    }
+
+    @Test
+    fun `аватар собеседника доезжает до строки`() = runTest(dispatcher) {
+        profiles.put("uid-2", version = 2)
+        conversations.send(listOf(header(chat = chat(id = "живой"), lastMessage = "привет")))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val state = model.state() as ChatsUiState.Content
+
+        assertEquals(listOf("uid-2" to 2), avatars.requested)
+        assertEquals(listOf(1.toByte(), 2, 3), state.avatars.getValue("uid-2").toList())
+    }
+
+    @Test
+    fun `у группы аватар не спрашивается вовсе`() = runTest(dispatcher) {
+        val group = chat(
+            id = "группа",
+            members = listOf("uid-1", "uid-2", "uid-3"),
+            logins = mapOf("uid-1" to "self", "uid-2" to "второй", "uid-3" to "третий"),
+        )
+        conversations.send(listOf(header(chat = group, lastMessage = "привет")))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("одного из нескольких показывать нечем — там значок", emptyList<Pair<String, Int>>(), avatars.requested)
+        assertTrue((model.state() as ChatsUiState.Content).avatars.isEmpty())
+    }
+
+    @Test
+    fun `профиль собеседника спрашивается один раз, а не на каждую реплику`() = runTest(dispatcher) {
+        profiles.put("uid-2", version = 2)
+        conversations.send(listOf(header(chat = chat(id = "живой"), lastMessage = "привет")))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        conversations.send(listOf(header(chat = chat(id = "живой"), lastMessage = "и ещё одна")))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, profiles.requests("uid-2"))
+        assertEquals("картинка обязана пережить новый снимок", 1, (model.state() as ChatsUiState.Content).avatars.size)
+    }
+
+    @Test
+    fun `безаватарный собеседник не оставляет в карте пустоты`() = runTest(dispatcher) {
+        profiles.put("uid-2", version = 0)
+        conversations.send(listOf(header(chat = chat(id = "живой"), lastMessage = "привет")))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue((model.state() as ChatsUiState.Content).avatars.isEmpty())
+        assertEquals("спросить о нём всё равно надо было — ровно раз", 1, profiles.requests("uid-2"))
     }
 }

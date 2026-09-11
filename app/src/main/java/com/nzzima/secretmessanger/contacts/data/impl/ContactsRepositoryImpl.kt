@@ -43,4 +43,5 @@ private fun DocumentSnapshot.toContact() = Contact(
     login = getString(Constants.LOGIN_FIELD)
         ?.takeIf { it.isNotEmpty() }
         ?: getString(Constants.NAME_FIELD).orEmpty(),
+    avatarVersion = getLong(Constants.PROFILE_AVATAR_VERSION_FIELD)?.toInt() ?: 0,
 )

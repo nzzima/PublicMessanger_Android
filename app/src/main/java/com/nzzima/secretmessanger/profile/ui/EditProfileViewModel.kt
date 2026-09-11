@@ -3,6 +3,7 @@ package com.nzzima.secretmessanger.profile.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nzzima.secretmessanger.auth.domain.FieldRules
+import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileEditor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
@@ -25,6 +26,7 @@ class EditProfileViewModel(
     private val sessionInteractor: SessionInteractor,
     private val profileInteractor: ProfileInteractor,
     private val profileEditor: ProfileEditor,
+    private val avatarInteractor: AvatarInteractor,
 ) : ViewModel() {
 
     private val editProfileScreenState = MutableStateFlow<EditProfileUiState>(EditProfileUiState.Loading)
@@ -94,8 +96,54 @@ class EditProfileViewModel(
         }
     }
 
+    /**
+     * Ставит выбранную картинку [source] аватаром.
+     *
+     * Аватар пишется **сразу**, не дожидаясь «Сохранить», и это не небрежность: он лежит в
+     * своём документе и ни с чем в форме не связан, а отказ на проверке логина иначе терял
+     * бы выбранное фото. Так же сделано на iOS.
+     */
+    fun onAvatarPicked(source: String) = changeAvatar { uid, form ->
+        avatarInteractor.change(uid, source, form.avatarVersion)
+            .map { form.avatarVersion + 1 }
+    }
+
+    /** Убирает аватар — тоже сразу. */
+    fun onAvatarRemoved() = changeAvatar { uid, _ ->
+        avatarInteractor.remove(uid).map { NO_AVATAR }
+    }
+
     /** Завершает сессию. Экран входа откроет навигация по изменению состояния сессии. */
     fun onSignOut() = sessionInteractor.signOut()
+
+    /**
+     * Общая часть смены и удаления аватара.
+     *
+     * Пока запись идёт, вторую не начинаем: номер следующей версии считается от текущей, а
+     * она станет известна только по возвращении. Два быстрых выбора подряд иначе ушли бы под
+     * одним номером — и второй показывался бы из кэша первым.
+     */
+    private fun changeAvatar(write: suspend (String, EditProfileUiState.Form) -> Result<Int>) {
+        val form = editProfileScreenState.value as? EditProfileUiState.Form ?: return
+        if (form.isAvatarChanging) return
+
+        val uid = sessionInteractor.observeSession().value.uidOrNull ?: return
+
+        update { it.copy(isAvatarChanging = true, error = null) }
+
+        viewModelScope.launch {
+            write(uid, form)
+                .onSuccess { version ->
+                    val image = avatarInteractor.avatar(uid, version)
+                    update { it.copy(isAvatarChanging = false, avatarVersion = version, avatar = image) }
+                }
+                .onFailure { error ->
+                    update {
+                        it.copy(isAvatarChanging = false, error = error.message ?: Constants.SERVER_SILENT)
+                    }
+                }
+        }
+    }
 
     private fun load() {
         val uid = sessionInteractor.observeSession().value.uidOrNull ?: return
@@ -110,7 +158,10 @@ class EditProfileViewModel(
                         login = profile.login,
                         name = profile.name,
                         someInfo = profile.someInfo,
+                        avatarVersion = profile.avatarVersion,
                     )
+                    val image = avatarInteractor.avatar(profile.id, profile.avatarVersion)
+                    update { it.copy(avatar = image) }
                 }
                 .onFailure {
                     editProfileScreenState.value =
@@ -123,4 +174,8 @@ class EditProfileViewModel(
         editProfileScreenState.update { current ->
             if (current is EditProfileUiState.Form) change(current) else current
         }
+
+    private companion object {
+        const val NO_AVATAR = 0
+    }
 }

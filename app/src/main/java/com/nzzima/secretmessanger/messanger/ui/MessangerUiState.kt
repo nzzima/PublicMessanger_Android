@@ -14,6 +14,8 @@ sealed interface MessangerUiState {
      * @property title название диалога — логины всех, кроме себя.
      * @property replies окно реплик, от старых к свежим; пустым бывает у диалога, в
      *   котором ещё никто ничего не написал.
+     * @property avatars байты аватаров по идентификатору участника; кого в карте нет — тот
+     *   ещё не загрузился либо аватара не имеет.
      * @property draft набранный, но не отправленный текст. Переживает отказ отправки:
      *   очищается только после успешной записи.
      * @property error причина, по которой отправка не прошла.
@@ -21,6 +23,7 @@ sealed interface MessangerUiState {
     data class Content(
         val title: String,
         val replies: List<Reply>,
+        val avatars: Map<String, ByteArray> = emptyMap(),
         val draft: String = "",
         val isSending: Boolean = false,
         val error: String? = null,

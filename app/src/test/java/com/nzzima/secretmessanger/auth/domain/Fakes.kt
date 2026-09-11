@@ -136,6 +136,15 @@ class FakeProfileRepository(
         return Result.success(Unit)
     }
 
+    /** Маркеры аватара, записанные в профиль, в порядке вызова. */
+    val avatarVersions = mutableListOf<Int>()
+
+    override suspend fun updateAvatarVersion(uid: String, version: Int): Result<Unit> {
+        avatarVersions += version
+        journal += "marker:$version"
+        return Result.success(Unit)
+    }
+
     override suspend fun exists(uid: String): Result<Boolean> =
         existsFails?.let { Result.failure(it) } ?: Result.success(uid in withProfile)
 }

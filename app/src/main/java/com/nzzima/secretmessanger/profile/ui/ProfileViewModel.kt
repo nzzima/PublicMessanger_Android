@@ -2,6 +2,7 @@ package com.nzzima.secretmessanger.profile.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -9,6 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -20,6 +22,7 @@ import kotlinx.coroutines.launch
 class ProfileViewModel(
     private val sessionInteractor: SessionInteractor,
     private val profileInteractor: ProfileInteractor,
+    private val avatarInteractor: AvatarInteractor,
 ) : ViewModel() {
 
     private val profileScreenState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
@@ -35,6 +38,17 @@ class ProfileViewModel(
     /** Читает профиль заново — нужна после отказа. */
     fun retry() = subscribe()
 
+    /** Догружает аватар к прочитанному профилю; сменившийся приедет с новой версией. */
+    private fun loadAvatar(uid: String, version: Int) {
+        viewModelScope.launch {
+            val image = avatarInteractor.avatar(uid, version)
+
+            profileScreenState.update { current ->
+                if (current is ProfileUiState.Content) current.copy(avatar = image) else current
+            }
+        }
+    }
+
     private fun subscribe() {
         val uid = sessionInteractor.observeSession().value.uidOrNull ?: return
 
@@ -44,7 +58,10 @@ class ProfileViewModel(
         subscription = viewModelScope.launch {
             profileInteractor.observeProfile(uid).collect { snapshot ->
                 snapshot
-                    .onSuccess { profileScreenState.value = ProfileUiState.Content(it) }
+                    .onSuccess { profile ->
+                        profileScreenState.value = ProfileUiState.Content(profile)
+                        loadAvatar(profile.id, profile.avatarVersion)
+                    }
                     .onFailure {
                         profileScreenState.value = ProfileUiState.Failed(it.message ?: Constants.SERVER_SILENT)
                         // Отказ Firestore не отличает мёртвую сессию от обрыва связи, а

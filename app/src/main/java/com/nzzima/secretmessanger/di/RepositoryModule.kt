@@ -8,6 +8,10 @@ import com.nzzima.secretmessanger.auth.domain.api.AuthenticationRepository
 import com.nzzima.secretmessanger.auth.domain.api.LoginRepository
 import com.nzzima.secretmessanger.auth.domain.api.ProfileRepository
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationRepository
+import com.nzzima.secretmessanger.avatar.data.impl.AvatarEncoderImpl
+import com.nzzima.secretmessanger.avatar.data.impl.AvatarRepositoryImpl
+import com.nzzima.secretmessanger.avatar.domain.api.AvatarEncoder
+import com.nzzima.secretmessanger.avatar.domain.api.AvatarRepository
 import com.nzzima.secretmessanger.chats.data.impl.ConversationRepositoryImpl
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.contacts.data.impl.ContactsRepositoryImpl
@@ -24,6 +28,7 @@ import com.nzzima.secretmessanger.session.data.impl.SessionRepositoryImpl
 import com.nzzima.secretmessanger.session.domain.api.SessionCloser
 import com.nzzima.secretmessanger.session.domain.api.SessionReader
 import com.nzzima.secretmessanger.session.domain.api.SessionValidator
+import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.binds
 import org.koin.dsl.module
 
@@ -65,6 +70,14 @@ val repositoryModule = module {
 
     single<ContactsRepository> {
         ContactsRepositoryImpl(get())
+    }
+
+    single<AvatarRepository> {
+        AvatarRepositoryImpl(get())
+    }
+
+    single<AvatarEncoder> {
+        AvatarEncoderImpl(androidContext())
     }
 
     single<MessageRepository> {

@@ -4,7 +4,9 @@ import com.nzzima.secretmessanger.chats.domain.FakeConversationRepository
 import com.nzzima.secretmessanger.chats.domain.chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
 import com.nzzima.secretmessanger.chats.domain.models.Moment
+import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.crypto.domain.FakeConversationKeys
+import com.nzzima.secretmessanger.profile.domain.FakeCompanionProfiles
 import com.nzzima.secretmessanger.crypto.domain.models.CryptoFailure
 import com.nzzima.secretmessanger.messanger.domain.FakeMessageRepository
 import com.nzzima.secretmessanger.messanger.domain.impl.MessangerInteractorImpl
@@ -39,6 +41,9 @@ class MessangerViewModelTest {
     /** Диалог без шифрования: расшифровка здесь не проверяется, это дело интерактора. */
     private val noKeys = FakeConversationKeys()
 
+    private val profiles = FakeCompanionProfiles()
+    private val avatars = FakeAvatarInteractor(image = byteArrayOf(1, 2, 3))
+
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 
     @After fun tearDown() = Dispatchers.resetMain()
@@ -47,6 +52,8 @@ class MessangerViewModelTest {
         "uid-1_uid-2",
         SessionInteractorImpl(sessions, sessions, sessions),
         MessangerInteractorImpl(conversations, messages, noKeys),
+        profiles,
+        avatars,
     )
 
     private fun MessangerViewModel.state() = observeMessangerScreenState().value
@@ -255,5 +262,57 @@ class MessangerViewModelTest {
 
         assertSame(MessangerUiState.Loading, model.state())
         assertEquals(null, conversations.requestedChat)
+    }
+
+    @Test
+    fun `аватары участников доезжают до ленты`() = runTest(dispatcher) {
+        profiles.put("uid-1", version = 1)
+        profiles.put("uid-2", version = 3)
+        val model = opened()
+
+        val state = model.content()
+
+        assertEquals("свой кружок берётся наравне с чужим", setOf("uid-1", "uid-2"), state.avatars.keys)
+        assertEquals(listOf("uid-1" to 1, "uid-2" to 3), avatars.requested)
+    }
+
+    @Test
+    fun `профиль участника спрашивается один раз, а не на каждую реплику`() = runTest(dispatcher) {
+        profiles.put("uid-2", version = 3)
+        val model = opened()
+
+        messages.send(listOf(message(body = "привет"), message(id = "второе", body = "и ещё")))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, profiles.requests("uid-2"))
+        assertEquals("картинка обязана пережить новый снимок", 1, model.content().avatars.size)
+    }
+
+    @Test
+    fun `добавленный в диалог участник спрашивается, а прежние — нет`() = runTest(dispatcher) {
+        profiles.put("uid-2", version = 3)
+        profiles.put("uid-3", version = 1)
+        val model = opened()
+
+        conversations.sendChat(
+            chat(
+                members = listOf("uid-1", "uid-2", "uid-3"),
+                logins = mapOf("uid-1" to "self", "uid-2" to "второй", "uid-3" to "третий"),
+            ),
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, profiles.requests("uid-2"))
+        assertEquals("новичка спросить надо — иначе он останется без лица", 1, profiles.requests("uid-3"))
+        assertEquals(setOf("uid-2", "uid-3"), model.content().avatars.keys)
+    }
+
+    @Test
+    fun `безаватарный участник не оставляет в карте пустоты`() = runTest(dispatcher) {
+        profiles.put("uid-2", version = 0)
+        val model = opened()
+
+        assertTrue(model.content().avatars.isEmpty())
+        assertEquals("спросить о нём всё равно надо было — ровно раз", 1, profiles.requests("uid-2"))
     }
 }

@@ -1,5 +1,8 @@
 package com.nzzima.secretmessanger.profile.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,9 +39,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nzzima.secretmessanger.ui.components.Avatar
 import com.nzzima.secretmessanger.ui.components.BackButton
 import com.nzzima.secretmessanger.ui.components.FailureNotice
 import com.nzzima.secretmessanger.ui.components.Field
+import com.nzzima.secretmessanger.ui.theme.Accent
 import com.nzzima.secretmessanger.ui.theme.ErrorColor
 import com.nzzima.secretmessanger.ui.theme.InkDim
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -101,6 +106,12 @@ fun EditProfileScreen(
 private fun EditProfileForm(form: EditProfileUiState.Form, viewModel: EditProfileViewModel) {
     var askingSignOut by remember { mutableStateOf(false) }
 
+    // Системный выборщик картинок: разрешений не требует вовсе — приложение получает доступ
+    // ровно к тому, что человек выбрал, и только на время выбора.
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let { viewModel.onAvatarPicked(it.toString()) }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -110,6 +121,24 @@ private fun EditProfileForm(form: EditProfileUiState.Form, viewModel: EditProfil
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(FIELD_GAP),
     ) {
+        Avatar(name = form.name.ifEmpty { form.login }, image = form.avatar, size = PROFILE_AVATAR)
+
+        TextButton(
+            onClick = {
+                picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            enabled = !form.isAvatarChanging,
+        ) {
+            Text(Constants.CHANGE_AVATAR, color = Accent, fontSize = 15.sp)
+        }
+
+        // Кнопка появляется, только когда убирать есть что: пустое «Убрать фото» у человека
+        // без аватара выглядело бы поломкой.
+        if (form.avatarVersion > 0) {
+            TextButton(onClick = viewModel::onAvatarRemoved, enabled = !form.isAvatarChanging) {
+                Text(Constants.REMOVE_AVATAR, color = InkDim, fontSize = 15.sp)
+            }
+        }
         LabeledField(Constants.PROFILE_LOGIN) {
             Field(
                 value = form.login,

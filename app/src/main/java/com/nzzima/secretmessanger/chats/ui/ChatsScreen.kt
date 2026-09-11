@@ -31,7 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nzzima.secretmessanger.chats.domain.models.Conversation
+import com.nzzima.secretmessanger.ui.components.Avatar
 import com.nzzima.secretmessanger.ui.components.FailureNotice
+import com.nzzima.secretmessanger.ui.components.GroupAvatar
 import com.nzzima.secretmessanger.ui.components.Notice
 import com.nzzima.secretmessanger.ui.components.shortTime
 import com.nzzima.secretmessanger.ui.theme.Ink
@@ -72,7 +74,7 @@ fun ChatsScreen(
 
                 ChatsUiState.Empty -> Notice(Constants.CHATS_EMPTY)
 
-                is ChatsUiState.Content -> ConversationList(current.conversations, onOpen)
+                is ChatsUiState.Content -> ConversationList(current, onOpen)
 
                 is ChatsUiState.Failed -> FailureNotice(current.message, viewModel::retry)
             }
@@ -81,24 +83,39 @@ fun ChatsScreen(
 }
 
 @Composable
-private fun ConversationList(conversations: List<Conversation>, onOpen: (String) -> Unit) {
+private fun ConversationList(state: ChatsUiState.Content, onOpen: (String) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(conversations, key = { it.chat.id }) { conversation ->
-            ConversationRow(conversation, onOpen)
+        items(state.conversations, key = { it.chat.id }) { conversation ->
+            ConversationRow(
+                conversation = conversation,
+                avatar = conversation.chat.companionId?.let(state.avatars::get),
+                onOpen = onOpen,
+            )
             HorizontalDivider(color = MaterialTheme.colorScheme.surface)
         }
     }
 }
 
-/** Строка списка: название диалога, превью последней реплики и её время. */
+/** Строка списка: лицо собеседника, название диалога, превью последней реплики и её время. */
 @Composable
-private fun ConversationRow(conversation: Conversation, onOpen: (String) -> Unit) {
+private fun ConversationRow(conversation: Conversation, avatar: ByteArray?, onOpen: (String) -> Unit) {
     Row(
         modifier = Modifier
             .clickable { onOpen(conversation.chat.id) }
             .padding(horizontal = SIDE_PADDING, vertical = ROW_PADDING),
         verticalAlignment = Alignment.Top,
     ) {
+        if (conversation.chat.isGroup) {
+            GroupAvatar(size = ROW_AVATAR, modifier = Modifier.padding(end = AVATAR_GAP))
+        } else {
+            Avatar(
+                name = conversation.chat.title,
+                image = avatar,
+                size = ROW_AVATAR,
+                modifier = Modifier.padding(end = AVATAR_GAP),
+            )
+        }
+
         Column(
             modifier = Modifier.weight(1f).padding(end = GAP),
             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -133,3 +150,5 @@ private fun ConversationRow(conversation: Conversation, onOpen: (String) -> Unit
 private val SIDE_PADDING = 16.dp
 private val ROW_PADDING = 12.dp
 private val GAP = 10.dp
+private val ROW_AVATAR = 44.dp
+private val AVATAR_GAP = 12.dp

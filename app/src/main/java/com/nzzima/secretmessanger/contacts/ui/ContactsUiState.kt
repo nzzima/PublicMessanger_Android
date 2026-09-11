@@ -11,8 +11,16 @@ sealed interface ContactsUiState {
     /** Кроме владельца никто не зарегистрирован. */
     data object Empty : ContactsUiState
 
-    /** [contacts] — по алфавиту, пустым список здесь не бывает. */
-    data class Content(val contacts: List<Contact>) : ContactsUiState
+    /**
+     * [contacts] — по алфавиту, пустым список здесь не бывает.
+     *
+     * @property avatars байты аватаров по идентификатору аккаунта; кого в карте нет — тот
+     *   ещё не загрузился либо аватара не имеет.
+     */
+    data class Content(
+        val contacts: List<Contact>,
+        val avatars: Map<String, ByteArray> = emptyMap(),
+    ) : ContactsUiState
 
     /** Подписка отказала. [message] показывается на экране, подписаться можно заново. */
     data class Failed(val message: String) : ContactsUiState

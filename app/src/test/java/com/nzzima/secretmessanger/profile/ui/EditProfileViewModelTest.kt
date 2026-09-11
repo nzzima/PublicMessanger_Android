@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.profile.ui
 
+import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.profile.domain.FakeProfileReader
 import com.nzzima.secretmessanger.profile.domain.api.ProfileEditor
 import com.nzzima.secretmessanger.profile.domain.impl.ProfileInteractorImpl
@@ -31,6 +32,7 @@ class EditProfileViewModelTest {
     private val sessions = FakeSessionRepository(Session.Authenticated("uid-1"))
     private val profiles = FakeProfileReader()
     private val editor = FakeProfileEditor()
+    private val avatars = FakeAvatarInteractor(image = byteArrayOf(1, 2, 3))
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 
@@ -40,6 +42,7 @@ class EditProfileViewModelTest {
         SessionInteractorImpl(sessions, sessions, sessions),
         ProfileInteractorImpl(profiles),
         editor,
+        avatars,
     )
 
     private fun EditProfileViewModel.form() = observeEditProfileScreenState().value as EditProfileUiState.Form
@@ -150,6 +153,54 @@ class EditProfileViewModelTest {
 
         pending.complete(Unit)
         dispatcher.scheduler.advanceUntilIdle()
+    }
+
+    @Test
+    fun `выбранная картинка ставится сразу, не дожидаясь Сохранить`() = runTest(dispatcher) {
+        val model = opened()
+
+        model.onAvatarPicked("content://pic")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf("content://pic"), avatars.changed)
+        assertTrue("сохранение формы к аватару отношения не имеет", editor.saves.isEmpty())
+        assertEquals(1, model.form().avatarVersion)
+    }
+
+    @Test
+    fun `второй выбор во время записи не принимается`() = runTest(dispatcher) {
+        val model = opened()
+        avatars.refusal = null
+
+        model.onAvatarPicked("content://first")
+        model.onAvatarPicked("content://second")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf("content://first"), avatars.changed)
+    }
+
+    @Test
+    fun `отказ записи аватара показывается строкой`() = runTest(dispatcher) {
+        val model = opened()
+        avatars.refusal = IllegalStateException(Constants.AVATAR_TOO_LARGE)
+
+        model.onAvatarPicked("content://pic")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(Constants.AVATAR_TOO_LARGE, model.form().error)
+    }
+
+    @Test
+    fun `удаление обнуляет версию`() = runTest(dispatcher) {
+        profiles.send(Profile(id = "uid-1", login = "blue", name = "Никита", someInfo = "", avatarVersion = 3))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        model.onAvatarRemoved()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, avatars.removals)
+        assertEquals(0, model.form().avatarVersion)
     }
 
     @Test

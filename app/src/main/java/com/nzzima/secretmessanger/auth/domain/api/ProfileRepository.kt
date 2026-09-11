@@ -29,4 +29,14 @@ interface ProfileRepository {
      * между собой. Значит при переименовании захват идёт первым, а эта запись второй.
      */
     suspend fun updateProfile(uid: String, login: String, name: String, someInfo: String): Result<Unit>
+
+    /**
+     * Проставляет аккаунту [uid] маркер аватара [version]; ноль означает «аватара нет».
+     *
+     * Живёт здесь, а не в слое аватаров, чтобы **все** записи в `users/{uid}` остались в
+     * одном месте: их стережёт правило `ownsLogin()`, и разбросанные по коду они однажды
+     * разошлись бы с ним. Слияние обязательно по той же причине — правило смотрит на
+     * документ целиком, каким он станет после записи.
+     */
+    suspend fun updateAvatarVersion(uid: String, version: Int): Result<Unit>
 }

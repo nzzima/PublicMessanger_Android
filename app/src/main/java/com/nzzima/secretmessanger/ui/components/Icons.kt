@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
  *
  * Своя отрисовка вместо `material-icons`: набор объявлен устаревшим, а нужна из него
  * горстка глифов. Контуры повторяют символы iOS — `person.circle`, `ellipsis.message`,
- * `person`, `chevron.left`, `arrow.up.circle`, `message`.
+ * `person`, `chevron.left`, `arrow.up.circle`, `message`, `person.2`.
  *
  * Все строятся в поле 24×24 и рисуются обводкой, поэтому цвет задаёт вызывающий через
  * `tint`.
@@ -125,4 +125,24 @@ val WriteIcon: ImageVector = strokeIcon("write") {
     lineTo(2.5f, 8f)
     arcToRelative(3.5f, 3.5f, 0f, false, true, 3.5f, -3.5f)
     close()
+}
+
+/**
+ * Двое — значок группы в списке «Чаты».
+ *
+ * Стоит вместо фотографии: показывать одного из нескольких участников значило бы врать. На
+ * iOS там же и по той же причине стоит `person.2`.
+ */
+val GroupIcon: ImageVector = strokeIcon("group") {
+    // Передний.
+    moveTo(9.5f, 6.5f)
+    arcToRelative(3f, 3f, 0f, true, true, -0.01f, 0f)
+    moveTo(3.5f, 18.5f)
+    curveTo(3.5f, 15.2f, 6.2f, 13.5f, 9.5f, 13.5f)
+    curveTo(12.8f, 13.5f, 15.5f, 15.2f, 15.5f, 18.5f)
+    // Задний, обрезанный передним.
+    moveTo(16f, 7f)
+    arcToRelative(2.6f, 2.6f, 0f, true, true, 2.2f, 4.4f)
+    moveTo(17.5f, 13.6f)
+    curveTo(19.7f, 14.2f, 21f, 15.8f, 21f, 18.5f)
 }

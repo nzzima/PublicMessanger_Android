@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nzzima.secretmessanger.messanger.domain.models.Reply
 import com.nzzima.secretmessanger.ui.components.BackButton
 import com.nzzima.secretmessanger.ui.components.FailureNotice
+import com.nzzima.secretmessanger.ui.components.Avatar
 import com.nzzima.secretmessanger.ui.components.Field
 import com.nzzima.secretmessanger.ui.components.Notice
 import com.nzzima.secretmessanger.ui.components.SendIcon
@@ -135,7 +136,7 @@ fun MessangerScreen(
                     }
 
                 is MessangerUiState.Content -> {
-                    ReplyList(current.replies, Modifier.weight(1f))
+                    ReplyList(current.replies, current.avatars, Modifier.weight(1f))
 
                     current.error?.let { message ->
                         Text(
@@ -166,7 +167,11 @@ fun MessangerScreen(
  * попадает в кадр сама — как чужая, так и своя.
  */
 @Composable
-private fun ReplyList(replies: List<Reply>, modifier: Modifier = Modifier) {
+private fun ReplyList(
+    replies: List<Reply>,
+    avatars: Map<String, ByteArray>,
+    modifier: Modifier = Modifier,
+) {
     if (replies.isEmpty()) {
         Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Notice(Constants.MESSAGES_EMPTY)
@@ -182,13 +187,15 @@ private fun ReplyList(replies: List<Reply>, modifier: Modifier = Modifier) {
         // reverseLayout, и короткая переписка повисала вверху экрана вместо панели ввода.
         verticalArrangement = Arrangement.spacedBy(REPLY_GAP, Alignment.Bottom),
     ) {
-        items(replies.asReversed(), key = { it.id }) { reply -> ReplyRow(reply) }
+        items(replies.asReversed(), key = { it.id }) { reply ->
+            ReplyRow(reply, avatars[reply.authorId])
+        }
     }
 }
 
-/** Реплика: пузырь со своей стороны, под ним время. */
+/** Реплика: кружок автора, пузырь со своей стороны, под ним время. */
 @Composable
-private fun ReplyRow(reply: Reply) {
+private fun ReplyRow(reply: Reply, avatar: ByteArray?) {
     if (reply.service) {
         Text(
             text = reply.text,
@@ -204,29 +211,62 @@ private fun ReplyRow(reply: Reply) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (reply.outgoing) Alignment.End else Alignment.Start,
     ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = BUBBLE_MAX_WIDTH)
-                // Оба пузыря весят одинаково, как на iOS: свой приглушённый синий,
-                // чужой светлее фона. Насыщенный свой делал разговор монологом.
-                .background(if (reply.outgoing) OwnBubble else Raised, RoundedCornerShape(BUBBLE_CORNER))
-                .padding(horizontal = BUBBLE_PADDING, vertical = BUBBLE_INNER_PADDING),
-        ) {
-            if (reply.author.isNotEmpty()) {
-                Text(
-                    text = reply.author,
-                    color = Accent,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+        Row(verticalAlignment = Alignment.Bottom) {
+            // Кружок стоит у каждого пузыря, в том числе у своего, и прижат к его низу: у
+            // длинной реплики автор иначе уезжал бы к первой строке текста.
+            if (!reply.outgoing) {
+                Avatar(
+                    name = reply.authorName,
+                    image = avatar,
+                    size = BUBBLE_AVATAR,
+                    modifier = Modifier.padding(end = AVATAR_GAP),
                 )
             }
 
-            Text(text = reply.text, color = Ink, fontSize = 16.sp)
+            Column(
+                modifier = Modifier
+                    .widthIn(max = BUBBLE_MAX_WIDTH)
+                    // Оба пузыря весят одинаково, как на iOS: свой приглушённый синий,
+                    // чужой светлее фона. Насыщенный свой делал разговор монологом.
+                    .background(
+                        if (reply.outgoing) OwnBubble else Raised,
+                        RoundedCornerShape(BUBBLE_CORNER),
+                    )
+                    .padding(horizontal = BUBBLE_PADDING, vertical = BUBBLE_INNER_PADDING),
+            ) {
+                if (reply.author.isNotEmpty()) {
+                    Text(
+                        text = reply.author,
+                        color = Accent,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                Text(text = reply.text, color = Ink, fontSize = 16.sp)
+            }
+
+            if (reply.outgoing) {
+                Avatar(
+                    name = reply.authorName,
+                    image = avatar,
+                    size = BUBBLE_AVATAR,
+                    modifier = Modifier.padding(start = AVATAR_GAP),
+                )
+            }
         }
 
-        Row(modifier = Modifier.padding(horizontal = BUBBLE_PADDING, vertical = 2.dp)) {
+        // Отступ со стороны кружка держит время под пузырём, а не под кружком.
+        Row(
+            modifier = Modifier.padding(
+                start = if (reply.outgoing) BUBBLE_PADDING else BUBBLE_AVATAR + AVATAR_GAP + BUBBLE_PADDING,
+                end = if (reply.outgoing) BUBBLE_AVATAR + AVATAR_GAP + BUBBLE_PADDING else BUBBLE_PADDING,
+                top = 2.dp,
+                bottom = 2.dp,
+            ),
+        ) {
             // Табличные цифры: без них время пляшет по горизонтали от реплики к реплике.
             Text(text = shortTime(reply.date), color = InkDim, style = TIME_STYLE)
 
@@ -288,7 +328,9 @@ private val TIME_STYLE = TextStyle(fontSize = 10.sp, fontFeatureSettings = "tnum
 private val SIDE_PADDING = 12.dp
 private val LIST_PADDING = 8.dp
 private val REPLY_GAP = 6.dp
-private val BUBBLE_MAX_WIDTH = 300.dp
+private val BUBBLE_MAX_WIDTH = 260.dp
+private val BUBBLE_AVATAR = 30.dp
+private val AVATAR_GAP = 8.dp
 private val BUBBLE_CORNER = 15.dp
 private val BUBBLE_PADDING = 12.dp
 private val BUBBLE_INNER_PADDING = 8.dp

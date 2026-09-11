@@ -42,6 +42,13 @@ class ProfileRepositoryImpl(private val firestore: FirebaseFirestore) : ProfileR
             .await()
     }
 
+    override suspend fun updateAvatarVersion(uid: String, version: Int): Result<Unit> = runCatching {
+        firestore.collection(Constants.USERS_COLLECTION)
+            .document(uid)
+            .set(mapOf(Constants.PROFILE_AVATAR_VERSION_FIELD to version), SetOptions.merge())
+            .await()
+    }
+
     override suspend fun exists(uid: String): Result<Boolean> = runCatching {
         firestore.collection(Constants.USERS_COLLECTION)
             .document(uid)

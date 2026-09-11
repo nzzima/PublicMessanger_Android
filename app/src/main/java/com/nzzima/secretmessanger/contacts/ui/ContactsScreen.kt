@@ -2,6 +2,7 @@ package com.nzzima.secretmessanger.contacts.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nzzima.secretmessanger.contacts.domain.models.Contact
+import com.nzzima.secretmessanger.ui.components.Avatar
 import com.nzzima.secretmessanger.ui.components.FailureNotice
 import com.nzzima.secretmessanger.ui.components.Notice
 import com.nzzima.secretmessanger.ui.theme.Ink
@@ -71,7 +73,7 @@ fun ContactsScreen(
 
                 ContactsUiState.Empty -> Notice(Constants.CONTACTS_EMPTY)
 
-                is ContactsUiState.Content -> ContactList(current.contacts, onOpen)
+                is ContactsUiState.Content -> ContactList(current, onOpen)
 
                 is ContactsUiState.Failed -> FailureNotice(current.message, viewModel::retry)
             }
@@ -80,25 +82,38 @@ fun ContactsScreen(
 }
 
 @Composable
-private fun ContactList(contacts: List<Contact>, onOpen: (Contact) -> Unit) {
+private fun ContactList(state: ContactsUiState.Content, onOpen: (Contact) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(contacts, key = { it.id }) { contact ->
-            Text(
-                text = contact.login,
-                color = Ink,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        items(state.contacts, key = { it.id }) { contact ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onOpen(contact) }
                     .padding(horizontal = SIDE_PADDING, vertical = ROW_PADDING),
-            )
+            ) {
+                Avatar(
+                    name = contact.login,
+                    image = state.avatars[contact.id],
+                    size = ROW_AVATAR,
+                    modifier = Modifier.padding(end = AVATAR_GAP),
+                )
+
+                Text(
+                    text = contact.login,
+                    color = Ink,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             HorizontalDivider(color = MaterialTheme.colorScheme.surface)
         }
     }
 }
 
 private val SIDE_PADDING = 16.dp
-private val ROW_PADDING = 14.dp
+private val ROW_PADDING = 10.dp
+private val ROW_AVATAR = 44.dp
+private val AVATAR_GAP = 12.dp

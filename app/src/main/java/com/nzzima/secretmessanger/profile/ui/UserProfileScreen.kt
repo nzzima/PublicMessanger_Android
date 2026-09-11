@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nzzima.secretmessanger.profile.domain.models.Profile
+import com.nzzima.secretmessanger.ui.components.Avatar
 import com.nzzima.secretmessanger.ui.components.BackButton
 import com.nzzima.secretmessanger.ui.components.FailureNotice
 import com.nzzima.secretmessanger.ui.components.WriteIcon
@@ -113,7 +114,8 @@ fun UserProfileScreen(
                 // экран не должен открываться безымянным.
                 is UserProfileUiState.Loading -> LoadingBody(current.name)
 
-                is UserProfileUiState.Content -> UserProfileBody(current.profile, current.error)
+                is UserProfileUiState.Content ->
+                    UserProfileBody(current.profile, current.avatar, current.error)
 
                 is UserProfileUiState.Failed -> FailureNotice(current.message, viewModel::retry)
             }
@@ -134,11 +136,18 @@ private fun LoadingBody(name: String) {
 }
 
 @Composable
-private fun UserProfileBody(profile: Profile, error: String?) {
+private fun UserProfileBody(profile: Profile, avatar: ByteArray?, error: String?) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Avatar(
+            name = profile.name.ifEmpty { profile.login },
+            image = avatar,
+            size = PROFILE_AVATAR,
+            modifier = Modifier.padding(bottom = 16.dp),
+        )
+
         PersonName(profile.name.ifEmpty { profile.login })
 
         Column(
