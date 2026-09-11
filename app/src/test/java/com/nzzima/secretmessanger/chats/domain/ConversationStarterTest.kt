@@ -14,6 +14,7 @@ import com.nzzima.secretmessanger.profile.domain.models.Profile
 import java.util.Base64
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -155,5 +156,50 @@ class ConversationStarterTest {
 
         assertEquals("профиля нет", result.exceptionOrNull()?.message)
         assertTrue(conversations.created.isEmpty())
+    }
+
+    @Test
+    fun `группа заводится со случайным идентификатором и ключом каждому`() = runTest {
+        val thirdKeys = IdentityKeyStoreImpl(FakeSharedPreferences(), FakeMasterKeyProvider())
+        val thirdPrivate = thirdKeys.createNew("uid-3")
+        publicKeys.stored["uid-3"] = encode(CryptoBox.publicKey(thirdPrivate))
+
+        val convoId = starter.startGroup("uid-1", mapOf("uid-2" to "второй", "uid-3" to "третий")).getOrThrow()
+
+        val chat = conversations.created.single()
+        assertNotEquals("состав в идентификатор не закодируешь", "uid-1_uid-2", convoId)
+        assertEquals(listOf("uid-1", "uid-2", "uid-3"), chat.members)
+        assertEquals("создатель — тот, кто завёл", "uid-1", chat.owner)
+        assertEquals("ключ запечатан каждому", 3, chat.convoKeys.size)
+        assertTrue(chat.isGroup)
+    }
+
+    @Test
+    fun `в шапке группы имена всех, включая своё`() = runTest {
+        val thirdKeys = IdentityKeyStoreImpl(FakeSharedPreferences(), FakeMasterKeyProvider())
+        publicKeys.stored["uid-3"] = encode(CryptoBox.publicKey(thirdKeys.createNew("uid-3")))
+
+        starter.startGroup("uid-1", mapOf("uid-2" to "второй", "uid-3" to "третий"))
+
+        assertEquals(
+            mapOf("uid-1" to "self", "uid-2" to "второй", "uid-3" to "третий"),
+            conversations.created.single().logins,
+        )
+    }
+
+    @Test
+    fun `участник без опубликованного ключа отменяет всю группу`() = runTest {
+        val result = starter.startGroup("uid-1", mapOf("uid-2" to "второй", "uid-9" to "безключа"))
+
+        assertTrue(result.exceptionOrNull() is CompanionKeyMissing)
+        assertTrue("всё или ничего: дозапечатывания в Android нет", conversations.created.isEmpty())
+    }
+
+    @Test
+    fun `две группы одним составом — это две разные группы`() = runTest {
+        val first = starter.startGroup("uid-1", mapOf("uid-2" to "второй")).getOrThrow()
+        val second = starter.startGroup("uid-1", mapOf("uid-2" to "второй")).getOrThrow()
+
+        assertNotEquals("«та же компания» — не то же самое, что «тот же разговор»", first, second)
     }
 }

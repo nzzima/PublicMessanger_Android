@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
  *
  * Своя отрисовка вместо `material-icons`: набор объявлен устаревшим, а нужна из него
  * горстка глифов. Контуры повторяют символы iOS — `person.circle`, `ellipsis.message`,
- * `person`, `chevron.left`, `arrow.up.circle`, `message`, `person.2`, `paperclip`, `mappin`, `mic`, `play.fill`, `stop.fill`.
+ * `person`, `chevron.left`, `arrow.up.circle`, `message`, `person.2`, `paperclip`, `mappin`, `mic`, `play.fill`, `stop.fill`, `person.2.badge.plus`.
  *
  * Все строятся в поле 24×24 и рисуются обводкой, поэтому цвет задаёт вызывающий через
  * `tint`.
@@ -205,4 +205,19 @@ val StopIcon: ImageVector = strokeIcon("stop") {
     lineTo(17f, 17f)
     lineTo(7f, 17f)
     close()
+}
+
+/** Двое и плюс — завести группу. */
+val NewGroupIcon: ImageVector = strokeIcon("newGroup") {
+    // Человек.
+    moveTo(9f, 7f)
+    arcToRelative(3f, 3f, 0f, true, true, -0.01f, 0f)
+    moveTo(3.5f, 19f)
+    curveTo(3.5f, 15.7f, 6f, 14f, 9f, 14f)
+    curveTo(12f, 14f, 14.5f, 15.7f, 14.5f, 19f)
+    // Плюс.
+    moveTo(18f, 7f)
+    lineTo(18f, 13f)
+    moveTo(15f, 10f)
+    lineTo(21f, 10f)
 }

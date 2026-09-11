@@ -12,13 +12,14 @@ import com.nzzima.secretmessanger.crypto.domain.models.CryptoFailure
 import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.utils.constants.Constants
 import java.util.Base64
+import java.util.UUID
 import kotlinx.coroutines.flow.first
 
 /**
- * Заведение диалога на двоих.
+ * Заведение диалога: на двоих по детерминированному идентификатору, группы — по случайному.
  *
- * Групп Android не заводит: состав в идентификатор не закодируешь, а список участников,
- * ротация ключа и удаление из группы — работа создателя, которой в приложении нет.
+ * Правка состава и ротация ключа по-прежнему не написаны: это работа создателя, и она
+ * начинается там, где кого-то добавляют или удаляют. Завести группу можно и без неё.
  */
 class ConversationStarterImpl(
     private val conversations: ConversationRepository,
@@ -93,4 +94,37 @@ class ConversationStarterImpl(
     }
 
     private fun encode(publicKey: ByteArray): String = Base64.getEncoder().encodeToString(publicKey)
+
+    override suspend fun startGroup(selfId: String, members: Map<String, String>): Result<String> {
+        // Случайный идентификатор, и повторное заведение той же компании даёт новую группу.
+        // Это не недосмотр: «та же компания» — не то же самое, что «тот же разговор».
+        val convoId = UUID.randomUUID().toString()
+
+        val identityPrivate = identityKeys.existing(selfId) ?: return Result.failure(CryptoFailure.NoKey)
+
+        val published = mutableMapOf(selfId to encode(CryptoBox.publicKey(identityPrivate)))
+
+        for (uid in members.keys) {
+            val key = publicKeys.published(uid).getOrElse { return Result.failure(it) }
+                ?: return Result.failure(CompanionKeyMissing())
+
+            published[uid] = key
+        }
+
+        val entries = conversationKeys.sealNew(convoId, published) ?: return Result.failure(CompanionKeyMissing())
+
+        val selfLogin = profiles.observe(selfId).first().getOrElse { return Result.failure(it) }.login
+
+        val chat = Chat(
+            id = convoId,
+            members = listOf(selfId) + members.keys,
+            logins = mapOf(selfId to selfLogin) + members,
+            owner = selfId,
+            selfId = selfId,
+            convoKeys = entries,
+            keyVersion = Constants.FIRST_KEY_VERSION,
+        )
+
+        return conversations.create(chat).map { convoId }
+    }
 }

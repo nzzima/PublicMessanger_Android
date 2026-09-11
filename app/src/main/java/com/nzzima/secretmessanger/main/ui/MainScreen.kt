@@ -26,6 +26,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.nzzima.secretmessanger.chats.ui.ChatsScreen
+import com.nzzima.secretmessanger.chats.ui.NewGroupScreen
 import com.nzzima.secretmessanger.contacts.ui.ContactsScreen
 import com.nzzima.secretmessanger.messanger.ui.MessangerScreen
 import com.nzzima.secretmessanger.profile.ui.EditProfileScreen
@@ -104,7 +105,22 @@ fun MainScreen(
                 )
             }
             composable(Tab.Chats.route) {
-                ChatsScreen(onOpen = { convoId -> navController.navigate(messangerRoute(convoId)) })
+                ChatsScreen(
+                    onOpen = { convoId -> navController.navigate(messangerRoute(convoId)) },
+                    onNewGroup = { navController.navigate(Constants.NEW_GROUP_ROUTE) },
+                )
+            }
+            composable(Constants.NEW_GROUP_ROUTE) {
+                NewGroupScreen(
+                    backTitle = remember { navController.backTitle() },
+                    onBack = { navController.popBackStack() },
+                    // Заведённая группа открывается **вместо** экрана выбора: возвращаться
+                    // к отмеченным галочкам после того, как группа уже есть, незачем.
+                    onCreated = { convoId ->
+                        navController.popBackStack()
+                        navController.navigate(messangerRoute(convoId))
+                    },
+                )
             }
             composable(Tab.Profile.route) {
                 ProfileScreen(onEdit = { navController.navigate(Constants.EDIT_ROUTE) })

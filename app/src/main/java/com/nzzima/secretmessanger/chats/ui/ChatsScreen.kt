@@ -36,6 +36,10 @@ import com.nzzima.secretmessanger.ui.components.FailureNotice
 import com.nzzima.secretmessanger.ui.components.GroupAvatar
 import com.nzzima.secretmessanger.ui.components.Notice
 import com.nzzima.secretmessanger.ui.components.shortTime
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import com.nzzima.secretmessanger.ui.components.NewGroupIcon
+import com.nzzima.secretmessanger.ui.theme.Accent
 import com.nzzima.secretmessanger.ui.theme.Ink
 import com.nzzima.secretmessanger.ui.theme.InkDim
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -50,6 +54,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun ChatsScreen(
     onOpen: (String) -> Unit,
+    onNewGroup: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ChatsViewModel = koinViewModel(),
 ) {
@@ -61,6 +66,11 @@ fun ChatsScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(Constants.CHATS_TITLE) },
+                actions = {
+                    IconButton(onClick = onNewGroup) {
+                        Icon(imageVector = NewGroupIcon, contentDescription = Constants.NEW_GROUP, tint = Accent)
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,

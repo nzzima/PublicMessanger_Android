@@ -1,6 +1,6 @@
 package com.nzzima.secretmessanger.chats.domain.api
 
-/** Заведение диалога с человеком. */
+/** Заведение диалога: на двоих или группой. */
 interface ConversationStarter {
 
     /**
@@ -22,4 +22,22 @@ interface ConversationStarter {
      *   если запечатать ключ собеседнику нечем.
      */
     suspend fun start(selfId: String, companionId: String, companionLogin: String): Result<String>
+
+    /**
+     * Новая группа аккаунта [selfId] с участниками [members] — карта «uid → имя».
+     *
+     * Идентификатор **случайный**, в отличие от диалога на двоих: состав в него не
+     * закодируешь, а состав к тому же меняется. Поэтому и повторного открытия «той же самой»
+     * группы не бывает — каждое заведение создаёт новую, как и на iOS.
+     *
+     * Создателем становится заводящий: править состав и перевыпускать ключ вправе только он.
+     *
+     * Ключ запечатывается **каждому сразу или никому**: дозапечатывания, какое есть у iOS, в
+     * Android нет, и участник, оставшийся без своей записи, не прочитал бы группу никогда.
+     *
+     * @return идентификатор заведённой группы.
+     * @throws com.nzzima.secretmessanger.chats.domain.models.CompanionKeyMissing отказом,
+     *   если хоть у кого-то из выбранных нет опубликованного ключа.
+     */
+    suspend fun startGroup(selfId: String, members: Map<String, String>): Result<String>
 }

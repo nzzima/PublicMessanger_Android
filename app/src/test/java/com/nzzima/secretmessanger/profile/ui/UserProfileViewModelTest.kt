@@ -240,4 +240,13 @@ private class FakeConversationStarter : ConversationStarter {
         return refusal?.let { Result.failure(it) }
             ?: Result.success(listOf(selfId, companionId).sorted().joinToString("_"))
     }
+
+    /** Заведённые группы: состав каждой, в порядке вызова. */
+    val groups = mutableListOf<Map<String, String>>()
+
+    override suspend fun startGroup(selfId: String, members: Map<String, String>): Result<String> {
+        groups += members
+
+        return refusal?.let { Result.failure(it) } ?: Result.success("группа-${groups.size}")
+    }
 }
