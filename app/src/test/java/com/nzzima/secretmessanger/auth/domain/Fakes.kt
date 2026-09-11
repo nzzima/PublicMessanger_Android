@@ -3,6 +3,7 @@ package com.nzzima.secretmessanger.auth.domain
 import com.nzzima.secretmessanger.auth.domain.api.AuthenticationRepository
 import com.nzzima.secretmessanger.auth.domain.api.LoginRepository
 import com.nzzima.secretmessanger.auth.domain.api.ProfileRepository
+import com.nzzima.secretmessanger.auth.domain.api.RegistrationMarker
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationRepository
 import com.nzzima.secretmessanger.auth.domain.models.AccountFailure
 import com.nzzima.secretmessanger.auth.domain.models.LoginAvailability
@@ -151,3 +152,16 @@ class FakeProfileRepository(
 
 /** Поля профиля, записанные правкой. */
 data class ProfileFields(val uid: String, val login: String, val name: String, val someInfo: String)
+
+/** [RegistrationMarker], который считает обёртывания и ничего больше не делает. */
+class FakeRegistrationMarker : RegistrationMarker {
+
+    /** Сколько раз регистрация уходила под пометку. */
+    var wraps = 0
+        private set
+
+    override suspend fun <T> whileRegistering(block: suspend () -> T): T {
+        wraps++
+        return block()
+    }
+}

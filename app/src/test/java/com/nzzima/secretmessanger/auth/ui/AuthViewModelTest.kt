@@ -3,6 +3,7 @@ package com.nzzima.secretmessanger.auth.ui
 import com.nzzima.secretmessanger.auth.domain.FakeAccountRepository
 import com.nzzima.secretmessanger.auth.domain.FakeLoginRepository
 import com.nzzima.secretmessanger.auth.domain.FakeProfileRepository
+import com.nzzima.secretmessanger.auth.domain.FakeRegistrationMarker
 import com.nzzima.secretmessanger.auth.domain.impl.AuthenticationInteractorImpl
 import com.nzzima.secretmessanger.auth.domain.impl.RegistrationInteractorImpl
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -33,7 +34,7 @@ class AuthViewModelTest {
         logins: FakeLoginRepository = FakeLoginRepository(),
         profiles: FakeProfileRepository = FakeProfileRepository(),
     ) = AuthViewModel(
-        RegistrationInteractorImpl(accounts, logins, profiles),
+        RegistrationInteractorImpl(accounts, logins, profiles, FakeRegistrationMarker()),
         AuthenticationInteractorImpl(accounts),
     )
 

@@ -2,6 +2,7 @@ package com.nzzima.secretmessanger.main.ui
 
 import com.nzzima.secretmessanger.auth.domain.FakeLoginRepository
 import com.nzzima.secretmessanger.auth.domain.FakeProfileRepository
+import com.nzzima.secretmessanger.auth.domain.api.RegistrationProgress
 import com.nzzima.secretmessanger.auth.domain.impl.ProfileRepairInteractorImpl
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityInteractor
 import com.nzzima.secretmessanger.crypto.domain.models.IdentityState
@@ -10,6 +11,8 @@ import com.nzzima.secretmessanger.session.domain.impl.SessionInteractorImpl
 import com.nzzima.secretmessanger.session.domain.models.Session
 import com.nzzima.secretmessanger.session.domain.models.SessionFailure
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -37,6 +40,7 @@ class RootViewModelTest {
     // По умолчанию профиль у аккаунта есть: достройка — исключение, а не обычный путь.
     private var profiles = FakeProfileRepository(mutableSetOf("uid-1"))
     private var logins = FakeLoginRepository()
+    private val progress = FakeRegistrationProgress()
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 
@@ -46,6 +50,7 @@ class RootViewModelTest {
         SessionInteractorImpl(sessions, sessions, sessions),
         identity,
         ProfileRepairInteractorImpl(profiles, logins),
+        progress,
     )
 
     private fun RootViewModel.state() = observeRootState().value
@@ -196,6 +201,29 @@ class RootViewModelTest {
     }
 }
 
+/**
+ * [RegistrationProgress], которым распоряжается тест.
+ *
+ * Ожидание устроено так же, как в бою, — на `StateFlow`: подделывать нечего, вся суть в том,
+ * что оболочка на нём останавливается.
+ */
+private class FakeRegistrationProgress : RegistrationProgress {
+
+    private val inProgress = MutableStateFlow(false)
+
+    fun begin() {
+        inProgress.value = true
+    }
+
+    fun end() {
+        inProgress.value = false
+    }
+
+    override suspend fun awaitIdle() {
+        inProgress.first { !it }
+    }
+}
+
 /** [IdentityInteractor] в памяти. Считает вызовы, чтобы ловить лишние проверки. */
 private class FakeIdentityInteractor : IdentityInteractor {
 
@@ -230,6 +258,7 @@ class RootViewModelRepairTest {
     private val identity = FakeIdentityInteractor()
     private val profiles = FakeProfileRepository()
     private val logins = FakeLoginRepository()
+    private val progress = FakeRegistrationProgress()
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 
@@ -239,6 +268,7 @@ class RootViewModelRepairTest {
         SessionInteractorImpl(sessions, sessions, sessions),
         identity,
         ProfileRepairInteractorImpl(profiles, logins),
+        progress,
     )
 
     private fun RootViewModel.state() = observeRootState().value
@@ -251,6 +281,25 @@ class RootViewModelRepairTest {
 
         assertEquals(RootState.NeedsProfile(), model.state())
         assertEquals("ключ не должен проверяться без профиля", 0, identity.prepares)
+    }
+
+    @Test
+    fun `идущая регистрация пережидается, а не читается как оборванная`() = runTest(dispatcher) {
+        // Первый шаг регистрации: аккаунт создан, сессия открыта, профиля ещё нет.
+        progress.begin()
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame("профиль ещё пишется — судить не о чем", RootState.Checking, model.state())
+        assertEquals("ключ тем более не трогаем", 0, identity.prepares)
+
+        // Третий шаг и конец регистрации.
+        profiles.createProfile("uid-1", login = "nzzima", name = "nzzima")
+        progress.end()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame(RootState.Ready, model.state())
     }
 
     @Test

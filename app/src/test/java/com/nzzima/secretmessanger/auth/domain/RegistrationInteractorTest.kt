@@ -12,11 +12,13 @@ import org.junit.Test
 
 class RegistrationInteractorTest {
 
+    private val marker = FakeRegistrationMarker()
+
     private fun interactor(
         accounts: FakeAccountRepository = FakeAccountRepository(),
         logins: FakeLoginRepository = FakeLoginRepository(),
         profiles: FakeProfileRepository = FakeProfileRepository(),
-    ) = RegistrationInteractorImpl(accounts, logins, profiles)
+    ) = RegistrationInteractorImpl(accounts, logins, profiles, marker)
 
     @Test
     fun `логин не по правилам отбивается до обращения к сети`() = runTest {
@@ -93,5 +95,12 @@ class RegistrationInteractorTest {
 
         assertEquals("email занят", result.exceptionOrNull()?.message)
         assertNull(profiles.created)
+    }
+
+    @Test
+    fun `регистрация идёт под пометкой, чтобы оболочка её переждала`() = runTest {
+        interactor().register("a@b.c", "123456", "nzzima")
+
+        assertEquals("сессию открывает первый шаг, а профиль пишет третий", 1, marker.wraps)
     }
 }

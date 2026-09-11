@@ -3,9 +3,12 @@ package com.nzzima.secretmessanger.di
 import com.nzzima.secretmessanger.auth.domain.api.AuthenticationInteractor
 import com.nzzima.secretmessanger.auth.domain.api.ProfileRepairInteractor
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationInteractor
+import com.nzzima.secretmessanger.auth.domain.api.RegistrationMarker
+import com.nzzima.secretmessanger.auth.domain.api.RegistrationProgress
 import com.nzzima.secretmessanger.auth.domain.impl.AuthenticationInteractorImpl
 import com.nzzima.secretmessanger.auth.domain.impl.ProfileRepairInteractorImpl
 import com.nzzima.secretmessanger.auth.domain.impl.RegistrationInteractorImpl
+import com.nzzima.secretmessanger.auth.domain.impl.RegistrationProgressImpl
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.avatar.domain.impl.AvatarInteractorImpl
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
@@ -26,6 +29,7 @@ import com.nzzima.secretmessanger.profile.domain.impl.ProfileEditorImpl
 import com.nzzima.secretmessanger.profile.domain.impl.ProfileInteractorImpl
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.session.domain.impl.SessionInteractorImpl
+import org.koin.dsl.binds
 import org.koin.dsl.module
 
 /**
@@ -37,8 +41,13 @@ import org.koin.dsl.module
 val interactorModule = module {
 
     single<RegistrationInteractor> {
-        RegistrationInteractorImpl(get(), get(), get())
+        RegistrationInteractorImpl(get(), get(), get(), get())
     }
+
+    // Одиночка обязателен: помечает регистрация, а ждёт оболочка — признак у них общий.
+    single {
+        RegistrationProgressImpl()
+    } binds arrayOf(RegistrationProgress::class, RegistrationMarker::class)
 
     single<AuthenticationInteractor> {
         AuthenticationInteractorImpl(get())

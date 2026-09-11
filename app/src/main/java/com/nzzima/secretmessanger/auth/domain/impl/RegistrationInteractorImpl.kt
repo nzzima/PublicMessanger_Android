@@ -4,6 +4,7 @@ import com.nzzima.secretmessanger.auth.domain.FieldRules
 import com.nzzima.secretmessanger.auth.domain.api.LoginRepository
 import com.nzzima.secretmessanger.auth.domain.api.ProfileRepository
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationInteractor
+import com.nzzima.secretmessanger.auth.domain.api.RegistrationMarker
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationRepository
 import com.nzzima.secretmessanger.auth.domain.models.LoginAvailability
 import com.nzzima.secretmessanger.auth.domain.models.LoginTaken
@@ -17,14 +18,22 @@ import com.nzzima.secretmessanger.auth.domain.models.RegistrationFailure
  * `users/{uid}` сверяет логин профиля с реестром.
  *
  * Проигранная гонка за логин откатывает созданный аккаунт; отказ связи его оставляет.
+ *
+ * Все три шага идут под пометкой [RegistrationMarker]: первый же из них открывает сессию, и
+ * без пометки оболочка успевала прочитать `users/{uid}` раньше третьего шага и уводила на
+ * достройку — посреди удавшейся регистрации.
  */
 class RegistrationInteractorImpl(
     private val registrationRepository: RegistrationRepository,
     private val loginRepository: LoginRepository,
     private val profileRepository: ProfileRepository,
+    private val registrationMarker: RegistrationMarker,
 ) : RegistrationInteractor {
 
-    override suspend fun register(email: String, password: String, login: String): Result<String> {
+    override suspend fun register(email: String, password: String, login: String): Result<String> =
+        registrationMarker.whileRegistering { registering(email, password, login) }
+
+    private suspend fun registering(email: String, password: String, login: String): Result<String> {
         if (!FieldRules.isValidLogin(login)) return Result.failure(RegistrationFailure.InvalidLogin)
 
         loginRepository.check(login, uid = null).onSuccess { availability ->

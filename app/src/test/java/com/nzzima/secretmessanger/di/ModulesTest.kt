@@ -9,6 +9,7 @@ import com.nzzima.secretmessanger.auth.domain.api.LoginRepository
 import com.nzzima.secretmessanger.auth.domain.api.ProfileRepository
 import com.nzzima.secretmessanger.auth.domain.api.ProfileRepairInteractor
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationInteractor
+import com.nzzima.secretmessanger.auth.domain.api.RegistrationProgress
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationRepository
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarEncoder
@@ -94,6 +95,7 @@ class ModulesTest {
         viewModelModule.verify(
             extraTypes = listOf(
                 RegistrationInteractor::class,
+                RegistrationProgress::class,
                 AuthenticationInteractor::class,
                 SessionInteractor::class,
                 IdentityInteractor::class,

@@ -3,6 +3,7 @@ package com.nzzima.secretmessanger.main.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nzzima.secretmessanger.auth.domain.api.ProfileRepairInteractor
+import com.nzzima.secretmessanger.auth.domain.api.RegistrationProgress
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityInteractor
 import com.nzzima.secretmessanger.crypto.domain.models.IdentityState
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
@@ -12,6 +13,7 @@ import com.nzzima.secretmessanger.utils.constants.Constants
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
@@ -30,11 +32,16 @@ import kotlinx.coroutines.launch
  * Профиль раньше ключа по своей причине: публикация открытой половины пишет `users/{uid}`
  * слиянием, а правило этой коллекции требует в записи логин, занятый тем же аккаунтом, — на
  * аккаунте без профиля публикация не проходит, и развилка ключа стала бы тупиком без выхода.
+ *
+ * Перед проверкой профиля оболочка пережидает идущую регистрацию: сессию открывает её первый
+ * шаг, а профиль пишет третий, и в промежутке отсутствие профиля не значит ничего. Без
+ * ожидания удавшаяся регистрация уводила на экран достройки.
  */
 class RootViewModel(
     private val sessionInteractor: SessionInteractor,
     private val identityInteractor: IdentityInteractor,
     private val profileRepairInteractor: ProfileRepairInteractor,
+    private val registrationProgress: RegistrationProgress,
 ) : ViewModel() {
 
     private val rootState = MutableStateFlow<RootState>(RootState.Checking)
@@ -44,7 +51,10 @@ class RootViewModel(
 
     init {
         viewModelScope.launch {
-            sessionInteractor.observeSession().collect { session ->
+            // collectLatest, а не collect: смена сессии обрывает незаконченную проверку.
+            // Проигранная гонка за логин удаляет только что созданный аккаунт, и проверка по
+            // нему договаривала бы про уже несуществующего человека.
+            sessionInteractor.observeSession().collectLatest { session ->
                 when (session) {
                     is Session.Anonymous -> rootState.value = RootState.Anonymous
                     is Session.Expired -> rootState.value = RootState.Expired
@@ -96,6 +106,8 @@ class RootViewModel(
 
     private suspend fun prepare(uid: String) {
         rootState.value = RootState.Checking
+
+        registrationProgress.awaitIdle()
 
         sessionInteractor.revalidate().onFailure { error ->
             // Мёртвую сессию репозиторий уже перевёл в Session.Expired; состояние
