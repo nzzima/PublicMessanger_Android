@@ -466,7 +466,10 @@ class MessangerViewModel(
                                 current.copy(title = dialogue.chat.title, replies = dialogue.replies)
                             } else {
                                 MessangerUiState.Content(dialogue.chat.title, dialogue.replies)
-                            }.copy(canLeave = dialogue.chat.isGroup && dialogue.chat.owner != dialogue.chat.selfId)
+                            }.copy(
+                                isGroup = dialogue.chat.isGroup,
+                                canLeave = dialogue.chat.isGroup && dialogue.chat.owner != dialogue.chat.selfId,
+                            )
                         }
                         loadAvatars(dialogue.chat)
                         loadPhotos(dialogue)

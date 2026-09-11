@@ -104,6 +104,7 @@ import com.nzzima.secretmessanger.ui.components.MicIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
+import com.nzzima.secretmessanger.ui.components.GroupIcon
 import com.nzzima.secretmessanger.utils.constants.Constants
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -128,6 +129,7 @@ fun MessangerScreen(
     convoId: String,
     backTitle: String,
     onBack: () -> Unit,
+    onMembers: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MessangerViewModel = koinViewModel { parametersOf(convoId) },
 ) {
@@ -189,8 +191,21 @@ fun MessangerScreen(
                 },
                 navigationIcon = { BackButton(backTitle, onBack) },
                 actions = {
-                    // Выход стоит в шапке и только у группы: у диалога на двоих выходить
-                    // некуда, а у создателя — не из чего, правило ему это запрещает.
+                    // Состав виден всем участникам, а правит его создатель: экран один, а
+                    // кнопки внутри разные — так не приходится объяснять, почему у одних
+                    // «Участники» есть, а у других нет.
+                    if (content?.isGroup == true) {
+                        IconButton(onClick = onMembers) {
+                            Icon(
+                                imageVector = GroupIcon,
+                                contentDescription = Constants.MEMBERS_TITLE,
+                                tint = Accent,
+                            )
+                        }
+                    }
+
+                    // Выход только у группы и не у создателя: у диалога на двоих выходить
+                    // некуда, а создателю правило это запрещает.
                     if (content?.canLeave == true) {
                         TextButton(onClick = viewModel::onLeaveAsked) {
                             Text(Constants.LEAVE_GROUP, color = ErrorColor, fontSize = 15.sp)

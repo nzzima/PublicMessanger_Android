@@ -102,4 +102,27 @@ interface ConversationRepository {
      * Ключи, создатель и метки прочтения при этом не трогаются: правило сверяет и их.
      */
     suspend fun leave(convoId: String, uid: String, members: List<String>): Result<Unit>
+
+    /**
+     * Переписывает состав диалога [convoId] и, если ключ менялся, его записи.
+     *
+     * Состав пишется **списком целиком**, а не добавлением одного: правила сравнивают его до и
+     * после, и явный список — единственный способ точно знать, что они увидят.
+     *
+     * Карта `convoKeys` сливается по ключам: Firestore делает глубокое слияние вложенной
+     * карты, поэтому чужие записи уцелевают, а старые версии остаются на месте — без них
+     * переписка стала бы нечитаемой у тех, кто остался.
+     *
+     * Пропускают эту запись правила только создателю.
+     *
+     * @param keys новые записи `convoKeys`; пусто — ключ не менялся.
+     * @param keyVersion новая текущая версия; `null` — ключ не менялся.
+     */
+    suspend fun updateMembers(
+        convoId: String,
+        members: List<String>,
+        logins: Map<String, String>,
+        keys: Map<String, String> = emptyMap(),
+        keyVersion: Int? = null,
+    ): Result<Unit>
 }

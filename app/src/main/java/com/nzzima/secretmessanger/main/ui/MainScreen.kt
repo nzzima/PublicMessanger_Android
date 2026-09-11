@@ -26,6 +26,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.nzzima.secretmessanger.chats.ui.ChatsScreen
+import com.nzzima.secretmessanger.chats.ui.MembersScreen
 import com.nzzima.secretmessanger.chats.ui.NewGroupScreen
 import com.nzzima.secretmessanger.contacts.ui.ContactsScreen
 import com.nzzima.secretmessanger.messanger.ui.MessangerScreen
@@ -155,7 +156,20 @@ fun MainScreen(
                 route = messangerRoute("{${Constants.CONVO_ID_ARGUMENT}}"),
                 arguments = listOf(navArgument(Constants.CONVO_ID_ARGUMENT) { type = NavType.StringType }),
             ) { entry ->
+                val convoId = entry.arguments?.getString(Constants.CONVO_ID_ARGUMENT).orEmpty()
+
                 MessangerScreen(
+                    convoId = convoId,
+                    backTitle = remember { navController.backTitle() },
+                    onBack = { navController.popBackStack() },
+                    onMembers = { navController.navigate(membersRoute(convoId)) },
+                )
+            }
+            composable(
+                route = membersRoute("{${Constants.CONVO_ID_ARGUMENT}}"),
+                arguments = listOf(navArgument(Constants.CONVO_ID_ARGUMENT) { type = NavType.StringType }),
+            ) { entry ->
+                MembersScreen(
                     convoId = entry.arguments?.getString(Constants.CONVO_ID_ARGUMENT).orEmpty(),
                     backTitle = remember { navController.backTitle() },
                     onBack = { navController.popBackStack() },
@@ -167,6 +181,8 @@ fun MainScreen(
 
 /** Назначение переписки: диалог задаётся аргументом пути. */
 private fun messangerRoute(convoId: String) = "${Constants.MESSANGER_ROUTE}/$convoId"
+
+private fun membersRoute(convoId: String) = "${Constants.MEMBERS_ROUTE}/$convoId"
 
 /**
  * Имя экрана, с которого пришли, — подпись кнопки возврата.

@@ -51,6 +51,14 @@ class FakeMessageRepository : MessageRepository {
         return Result.success(Unit)
     }
 
+    /** Отметки о смене ключа: в каком диалоге и от кого. */
+    val notes = mutableListOf<Pair<String, String>>()
+
+    override suspend fun note(convoId: String, senderId: String): Result<Unit> {
+        notes += convoId to senderId
+        return Result.success(Unit)
+    }
+
     /** Отдаёт подписчикам очередной снимок. */
     fun send(messages: List<Message>) = snapshots.tryEmit(Result.success(messages))
 

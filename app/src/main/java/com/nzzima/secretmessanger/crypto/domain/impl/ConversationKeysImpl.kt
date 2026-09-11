@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.crypto.domain.impl
 
+import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.crypto.domain.CryptoBox
 import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityKeyStore
@@ -52,6 +53,48 @@ class ConversationKeysImpl(private val identityKeys: IdentityKeyStore) : Convers
             entryKey(uid, version) to payload
         }
     }
+
+    override fun sealExisting(chat: Chat, publicKeys: Map<String, String>): Map<String, String>? {
+        val entries = mutableMapOf<String, String>()
+
+        // Версии перебираются от первой до текущей: карта шапки хранит их все, и какие из
+        // них нам доступны, знает только наш собственный ключ.
+        for (version in Constants.FIRST_KEY_VERSION..chat.keyVersion) {
+            val key = open(chat.id, chat.selfId, version, chat.convoKeys) ?: continue
+
+            for ((uid, encoded) in publicKeys) {
+                val recipient = decode(encoded) ?: return null
+                val payload = runCatching { CryptoBox.sealKey(key, recipient, context(chat.id, version)) }
+                    .getOrNull()
+                    ?: return null
+
+                entries[entryKey(uid, version)] = payload
+            }
+        }
+
+        return entries.takeIf { it.isNotEmpty() }
+    }
+
+    override fun rotate(chat: Chat, publicKeys: Map<String, String>): Pair<Map<String, String>, Int>? {
+        if (publicKeys.isEmpty()) return null
+
+        val key = CryptoBox.newConversationKey()
+        val version = chat.keyVersion + 1
+
+        val entries = publicKeys.entries.associate { (uid, encoded) ->
+            val recipient = decode(encoded) ?: return null
+            val payload = runCatching { CryptoBox.sealKey(key, recipient, context(chat.id, version)) }
+                .getOrNull()
+                ?: return null
+
+            entryKey(uid, version) to payload
+        }
+
+        return entries to version
+    }
+
+    private fun decode(encoded: String): ByteArray? =
+        runCatching { Base64.getDecoder().decode(encoded) }.getOrNull()
 
     /** Ключ записи в карте `convoKeys`: чей ключ и какой версии. */
     private fun entryKey(uid: String, version: Int) = "${uid}_$version"

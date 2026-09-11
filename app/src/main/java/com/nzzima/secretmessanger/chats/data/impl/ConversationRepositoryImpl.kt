@@ -118,6 +118,27 @@ class ConversationRepositoryImpl(private val firestore: FirebaseFirestore) : Con
             .await()
     }
 
+    override suspend fun updateMembers(
+        convoId: String,
+        members: List<String>,
+        logins: Map<String, String>,
+        keys: Map<String, String>,
+        keyVersion: Int?,
+    ): Result<Unit> = runCatching {
+        val payload = buildMap<String, Any> {
+            put(Constants.USERS_FIELD, members)
+            put(Constants.LOGINS_FIELD, logins)
+
+            if (keys.isNotEmpty()) put(Constants.CONVO_KEYS_FIELD, keys)
+            keyVersion?.let { put(Constants.KEY_VERSION_FIELD, it) }
+        }
+
+        firestore.collection(Constants.CONVERSATION_COLLECTION)
+            .document(convoId)
+            .set(payload, SetOptions.merge())
+            .await()
+    }
+
     override suspend fun create(chat: Chat): Result<Unit> = runCatching {
         firestore.collection(Constants.CONVERSATION_COLLECTION)
             .document(chat.id)

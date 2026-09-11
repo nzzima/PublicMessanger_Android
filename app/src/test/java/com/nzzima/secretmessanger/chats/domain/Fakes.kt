@@ -114,6 +114,25 @@ class FakeConversationRepository(
         return Result.success(Unit)
     }
 
+    /** Составы после правки: диалог → кто в нём остался, и какие ключи дописаны. */
+    val updated = mutableListOf<Triple<List<String>, Map<String, String>, Int?>>()
+
+    /** Чем отказывает правка состава; `null` — проходит. */
+    var updateFails: Throwable? = null
+
+    override suspend fun updateMembers(
+        convoId: String,
+        members: List<String>,
+        logins: Map<String, String>,
+        keys: Map<String, String>,
+        keyVersion: Int?,
+    ): Result<Unit> {
+        updateFails?.let { return Result.failure(it) }
+
+        updated += Triple(members, keys, keyVersion)
+        return Result.success(Unit)
+    }
+
     override suspend fun create(chat: Chat): Result<Unit> {
         createFails?.let { return Result.failure(it) }
 

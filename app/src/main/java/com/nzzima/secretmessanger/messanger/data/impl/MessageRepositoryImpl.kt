@@ -59,6 +59,18 @@ class MessageRepositoryImpl(private val firestore: FirebaseFirestore) : MessageR
             .await()
     }
 
+    override suspend fun note(convoId: String, senderId: String): Result<Unit> = runCatching {
+        firestore.messages(convoId)
+            .add(
+                mapOf(
+                    Constants.SENDER_ID_FIELD to senderId,
+                    Constants.DATE_FIELD to com.google.firebase.Timestamp.now(),
+                    Constants.TYPE_FIELD to Constants.KEY_NOTICE_TYPE,
+                ),
+            )
+            .await()
+    }
+
     private fun FirebaseFirestore.messages(convoId: String) =
         collection(Constants.CONVERSATION_COLLECTION).document(convoId).collection(Constants.MESSAGES_COLLECTION)
 }

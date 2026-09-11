@@ -1,6 +1,7 @@
 package com.nzzima.secretmessanger.crypto.domain
 
 import android.content.SharedPreferences
+import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
 import com.nzzima.secretmessanger.crypto.domain.api.MasterKeyProvider
 import com.nzzima.secretmessanger.crypto.domain.api.PublicKeyRepository
@@ -117,4 +118,8 @@ class FakeConversationKeys : ConversationKeys {
     override fun open(convoId: String, uid: String, version: Int, entries: Map<String, String>): ByteArray? = null
 
     override fun sealNew(convoId: String, publicKeys: Map<String, String>): Map<String, String>? = null
+
+    override fun sealExisting(chat: Chat, publicKeys: Map<String, String>): Map<String, String>? = null
+
+    override fun rotate(chat: Chat, publicKeys: Map<String, String>): Pair<Map<String, String>, Int>? = null
 }

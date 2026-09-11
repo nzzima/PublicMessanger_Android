@@ -28,6 +28,7 @@ import com.nzzima.secretmessanger.voice.domain.api.VoiceRecorder
 import com.nzzima.secretmessanger.voice.domain.api.VoiceRepository
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
+import com.nzzima.secretmessanger.chats.domain.api.GroupEditor
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsRepository
 import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
@@ -129,6 +130,7 @@ class ModulesTest {
                 LocationSource::class,
                 MessangerInteractor::class,
                 ConversationStarter::class,
+                GroupEditor::class,
             ),
             injections = injectedParameters(
                 definition<MessangerViewModel>(String::class),

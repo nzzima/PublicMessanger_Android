@@ -2,6 +2,7 @@ package com.nzzima.secretmessanger.di
 
 import com.nzzima.secretmessanger.auth.ui.AuthViewModel
 import com.nzzima.secretmessanger.chats.ui.ChatsViewModel
+import com.nzzima.secretmessanger.chats.ui.MembersViewModel
 import com.nzzima.secretmessanger.chats.ui.NewGroupViewModel
 import com.nzzima.secretmessanger.contacts.ui.ContactsViewModel
 import com.nzzima.secretmessanger.main.ui.RootViewModel
@@ -34,6 +35,10 @@ val viewModelModule = module {
 
     viewModel {
         NewGroupViewModel(get(), get(), get())
+    }
+
+    viewModel { (convoId: String) ->
+        MembersViewModel(convoId, get(), get(), get())
     }
 
     viewModel {

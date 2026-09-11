@@ -19,6 +19,7 @@ sealed interface MessangerUiState {
      * @property photos байты снимков по идентификатору реплики; чего в карте нет — то ещё
      *   грузится либо не открылось: ключа нужной версии у нас нет.
      * @property opened снимок, раскрытый на весь экран; `null` — лента как обычно.
+     * @property isGroup группа ли это: у неё есть состав, который можно посмотреть.
      * @property canLeave можно ли выйти: группа и мы в ней не создатель.
      * @property askingLeave показан вопрос «выйти из группы?».
      * @property left вышли — поручение экрану вернуться к списку диалогов.
@@ -39,6 +40,7 @@ sealed interface MessangerUiState {
         val photos: Map<String, ByteArray> = emptyMap(),
         val opened: ByteArray? = null,
         val presence: String? = null,
+        val isGroup: Boolean = false,
         val canLeave: Boolean = false,
         val askingLeave: Boolean = false,
         val left: Boolean = false,

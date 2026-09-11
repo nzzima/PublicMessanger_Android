@@ -36,4 +36,13 @@ interface MessageRepository {
      *   списке «📍 Геопозиция». У текста и снимка совпадает.
      */
     suspend fun send(convoId: String, message: Message, preview: String): Result<Unit>
+
+    /**
+     * Дописывает в ленту [convoId] отметку о смене ключа от [senderId].
+     *
+     * Ни текста, ни признака шифрования: шифровать в ней нечего, поле `type` и есть всё
+     * сообщение. **Шапку она не трогает** — список диалогов должен показывать последнюю
+     * настоящую реплику, а не служебную запись.
+     */
+    suspend fun note(convoId: String, senderId: String): Result<Unit>
 }

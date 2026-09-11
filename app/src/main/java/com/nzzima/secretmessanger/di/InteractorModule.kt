@@ -13,8 +13,10 @@ import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.avatar.domain.impl.AvatarInteractorImpl
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
+import com.nzzima.secretmessanger.chats.domain.api.GroupEditor
 import com.nzzima.secretmessanger.chats.domain.impl.ChatsInteractorImpl
 import com.nzzima.secretmessanger.chats.domain.impl.ConversationStarterImpl
+import com.nzzima.secretmessanger.chats.domain.impl.GroupEditorImpl
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
 import com.nzzima.secretmessanger.contacts.domain.impl.ContactsInteractorImpl
 import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
@@ -109,6 +111,10 @@ val interactorModule = module {
     // Тоже одиночка и по той же причине: кэш снимков переживает уход с экрана переписки.
     single<PhotoInteractor> {
         PhotoInteractorImpl(get(), get(), get())
+    }
+
+    single<GroupEditor> {
+        GroupEditorImpl(get(), get(), get(), get(), get())
     }
 
     single<PresenceInteractor> {
