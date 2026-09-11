@@ -15,6 +15,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -62,7 +64,16 @@ fun MainScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (currentTab != null) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    // Высота задаётся явно: у Material3 она 80 точек — заметно выше, чем
+                    // таб-бар iOS, и этот запас отъедал ленту на каждом экране.
+                    modifier = Modifier.height(TAB_BAR_HEIGHT),
+                    // Свой отступ под системную полосу панель не ставит: его уже поставил
+                    // корневой Scaffold. Со вторым внутри панели оставалась пустая полоса
+                    // в полсотни точек, из-за которой она и выглядела громоздкой.
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                ) {
                     Tab.entries.forEach { tab ->
                         NavigationBarItem(
                             selected = currentTab == tab,
@@ -181,3 +192,6 @@ private fun NavHostController.switchTo(tab: Tab) {
         restoreState = true
     }
 }
+
+/** Высота таб-бара без системной полосы: значок в 24 точки, подпись под ним и поля. */
+private val TAB_BAR_HEIGHT = 56.dp
