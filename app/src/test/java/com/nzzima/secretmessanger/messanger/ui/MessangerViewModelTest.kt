@@ -8,6 +8,9 @@ import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.crypto.domain.FakeConversationKeys
 import com.nzzima.secretmessanger.messanger.domain.FakeLocationSource
 import com.nzzima.secretmessanger.messanger.domain.FakePhotoInteractor
+import com.nzzima.secretmessanger.messanger.domain.FakeVoiceInteractor
+import com.nzzima.secretmessanger.messanger.domain.FakeVoicePlayer
+import com.nzzima.secretmessanger.messanger.domain.FakeVoiceRecorder
 import com.nzzima.secretmessanger.presence.domain.FakePresenceInteractor
 import com.nzzima.secretmessanger.presence.domain.models.Presence
 import com.nzzima.secretmessanger.profile.domain.FakeCompanionProfiles
@@ -53,6 +56,9 @@ class MessangerViewModelTest {
     private val photos = FakePhotoInteractor()
     private val places = FakeLocationSource()
     private val presence = FakePresenceInteractor()
+    private val voices = FakeVoiceInteractor()
+    private val recorder = FakeVoiceRecorder()
+    private val player = FakeVoicePlayer()
     private val avatars = FakeAvatarInteractor(image = byteArrayOf(1, 2, 3))
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
@@ -62,24 +68,30 @@ class MessangerViewModelTest {
     private fun viewModel() = MessangerViewModel(
         "uid-1_uid-2",
         SessionInteractorImpl(sessions, sessions, sessions),
-        MessangerInteractorImpl(conversations, messages, noKeys, photos),
+        MessangerInteractorImpl(conversations, messages, noKeys, photos, voices),
         profiles,
         avatars,
         photos,
         places,
         presence,
+        voices,
+        recorder,
+        player,
     )
 
     /** Та же модель, но телефон места не знает: геолокация выключена или приёмник молчит. */
     private fun viewModelWithoutPlace() = MessangerViewModel(
         "uid-1_uid-2",
         SessionInteractorImpl(sessions, sessions, sessions),
-        MessangerInteractorImpl(conversations, messages, noKeys, photos),
+        MessangerInteractorImpl(conversations, messages, noKeys, photos, voices),
         profiles,
         avatars,
         photos,
         FakeLocationSource(place = null),
         presence,
+        voices,
+        recorder,
+        player,
     ).also {
         conversations.sendChat(chat())
         messages.send(listOf(message(body = "привет")))
@@ -465,5 +477,128 @@ class MessangerViewModelTest {
 
         assertTrue("присутствие одного из нескольких ни о чём не говорит", presence.watched.isEmpty())
         assertNull(model.content().presence)
+    }
+
+    @Test
+    fun `удержание записывает, отпускание отправляет`() = runTest(dispatcher) {
+        val model = opened()
+
+        model.onRecordStart()
+        // Только текущая работа: advanceUntilIdle промотал бы весь потолок записи, и она
+        // остановилась бы сама, не дождавшись поднятого пальца.
+        dispatcher.scheduler.runCurrent()
+
+        assertEquals(120, model.content().recordingLeft)
+
+        model.onRecordFinish()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertNull("отсчёт кончился вместе с записью", model.content().recordingLeft)
+        assertEquals(MessageKind.Voice, messages.sent.single().second.kind)
+    }
+
+    @Test
+    fun `отсчёт идёт вниз`() = runTest(dispatcher) {
+        val model = opened()
+        model.onRecordStart()
+
+        dispatcher.scheduler.advanceTimeBy(3_100)
+        dispatcher.scheduler.runCurrent()
+
+        assertEquals(117, model.content().recordingLeft)
+        model.onRecordCancel()
+    }
+
+    @Test
+    fun `слишком короткое нажатие ничего не отправляет`() = runTest(dispatcher) {
+        val model = opened()
+        recorder.records(null)
+
+        model.onRecordStart()
+        model.onRecordFinish()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue("ткнул в микрофон — это не ошибка и не сообщение", messages.sent.isEmpty())
+        assertNull(model.content().error)
+    }
+
+    @Test
+    fun `уведённый палец бросает запись`() = runTest(dispatcher) {
+        val model = opened()
+
+        model.onRecordStart()
+        model.onRecordCancel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, recorder.cancels)
+        assertTrue(messages.sent.isEmpty())
+        assertNull(model.content().recordingLeft)
+    }
+
+    @Test
+    fun `занятый микрофон показывается строкой`() = runTest(dispatcher) {
+        val model = opened()
+        recorder.starts = false
+
+        model.onRecordStart()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(Constants.VOICE_FAILED, model.content().error)
+        assertNull("говорить в пустоту человека оставлять нельзя", model.content().recordingLeft)
+    }
+
+    @Test
+    fun `нажатие играет, повторное останавливает`() = runTest(dispatcher) {
+        val model = opened()
+
+        model.onVoicePressed("m-1", version = 1)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf("m-1" to 1), voices.requested)
+        assertEquals("m-1", model.content().playing)
+
+        model.onVoicePressed("m-1", version = 1)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertNull("та же кнопка и означает «хватит»", model.content().playing)
+    }
+
+    @Test
+    fun `ход проигрывания доезжает до экрана`() = runTest(dispatcher) {
+        val model = opened()
+        model.onVoicePressed("m-1", version = 1)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        player.to(0.4f)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(0.4f, model.content().progress, 0.001f)
+    }
+
+    @Test
+    fun `нечитаемое голосовое не притворяется звучащим`() = runTest(dispatcher) {
+        val model = MessangerViewModel(
+            "uid-1_uid-2",
+            SessionInteractorImpl(sessions, sessions, sessions),
+            MessangerInteractorImpl(conversations, messages, noKeys, photos, voices),
+            profiles,
+            avatars,
+            photos,
+            places,
+            presence,
+            FakeVoiceInteractor(file = null),
+            recorder,
+            player,
+        ).also {
+            conversations.sendChat(chat())
+            messages.send(listOf(message(body = "привет")))
+            dispatcher.scheduler.advanceUntilIdle()
+        }
+
+        model.onVoicePressed("m-1", version = 1)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(model.content().playing)
+        assertEquals(Constants.UNREADABLE, model.content().error)
     }
 }

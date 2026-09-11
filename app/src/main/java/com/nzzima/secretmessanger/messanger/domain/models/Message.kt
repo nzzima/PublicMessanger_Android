@@ -20,6 +20,8 @@ import com.nzzima.secretmessanger.photo.domain.models.PhotoSize
  * @property kind вид реплики; выводится из поля `type`.
  * @property size размеры снимка у [MessageKind.Photo]; у прочих видов `null`. Едут в самом
  *   сообщении, а не рядом с байтами: без них пузырь не сверстать до загрузки.
+ * @property seconds длительность голосового у [MessageKind.Voice]; у прочих `null`. Тоже в
+ *   сообщении: подпись под кнопкой «слушать» нужна раньше, чем звук.
  */
 data class Message(
     val id: String,
@@ -30,4 +32,5 @@ data class Message(
     val date: Moment,
     val kind: MessageKind,
     val size: PhotoSize? = null,
+    val seconds: Double? = null,
 )

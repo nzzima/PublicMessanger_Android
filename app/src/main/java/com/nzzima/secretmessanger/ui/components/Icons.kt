@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
  *
  * Своя отрисовка вместо `material-icons`: набор объявлен устаревшим, а нужна из него
  * горстка глифов. Контуры повторяют символы iOS — `person.circle`, `ellipsis.message`,
- * `person`, `chevron.left`, `arrow.up.circle`, `message`, `person.2`, `paperclip`, `mappin`.
+ * `person`, `chevron.left`, `arrow.up.circle`, `message`, `person.2`, `paperclip`, `mappin`, `mic`, `play.fill`, `stop.fill`.
  *
  * Все строятся в поле 24×24 и рисуются обводкой, поэтому цвет задаёт вызывающий через
  * `tint`.
@@ -170,4 +170,39 @@ val PinIcon: ImageVector = strokeIcon("pin") {
     // Глазок.
     moveTo(12f, 7f)
     arcToRelative(2.5f, 2.5f, 0f, true, true, -0.01f, 0f)
+}
+
+/** Микрофон — запись голосового в панели ввода. */
+val MicIcon: ImageVector = strokeIcon("mic") {
+    // Капсула.
+    moveTo(12f, 3f)
+    arcToRelative(3f, 3f, 0f, false, true, 3f, 3f)
+    lineTo(15f, 12f)
+    arcToRelative(3f, 3f, 0f, false, true, -6f, 0f)
+    lineTo(9f, 6f)
+    arcToRelative(3f, 3f, 0f, false, true, 3f, -3f)
+    close()
+    // Дуга и стойка.
+    moveTo(5.5f, 11.5f)
+    curveTo(5.5f, 15.1f, 8.4f, 18f, 12f, 18f)
+    curveTo(15.6f, 18f, 18.5f, 15.1f, 18.5f, 11.5f)
+    moveTo(12f, 18f)
+    lineTo(12f, 21f)
+}
+
+/** Треугольник — «слушать». */
+val PlayIcon: ImageVector = strokeIcon("play") {
+    moveTo(8f, 5.5f)
+    lineTo(18f, 12f)
+    lineTo(8f, 18.5f)
+    close()
+}
+
+/** Квадрат — «хватит». */
+val StopIcon: ImageVector = strokeIcon("stop") {
+    moveTo(7f, 7f)
+    lineTo(17f, 7f)
+    lineTo(17f, 17f)
+    lineTo(7f, 17f)
+    close()
 }

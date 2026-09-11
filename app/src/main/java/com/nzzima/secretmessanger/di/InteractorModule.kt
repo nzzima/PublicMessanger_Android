@@ -33,6 +33,10 @@ import com.nzzima.secretmessanger.profile.domain.impl.ProfileEditorImpl
 import com.nzzima.secretmessanger.profile.domain.impl.ProfileInteractorImpl
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.session.domain.impl.SessionInteractorImpl
+import com.nzzima.secretmessanger.voice.domain.api.VoiceInteractor
+import com.nzzima.secretmessanger.voice.domain.impl.VoiceInteractorImpl
+import java.io.File
+import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.binds
 import org.koin.dsl.module
 
@@ -86,7 +90,7 @@ val interactorModule = module {
     }
 
     single<MessangerInteractor> {
-        MessangerInteractorImpl(get(), get(), get(), get())
+        MessangerInteractorImpl(get(), get(), get(), get(), get())
     }
 
     single<ProfileInteractor> {
@@ -109,5 +113,11 @@ val interactorModule = module {
 
     single<PresenceInteractor> {
         PresenceInteractorImpl(get())
+    }
+
+    // Расшифрованные голосовые лежат в своей папке кэша: система вычистит её вместе с
+    // остальным кэшем приложения, а мы не станем разводить открытый звук по всему диску.
+    single<VoiceInteractor> {
+        VoiceInteractorImpl(get(), get(), File(androidContext().cacheDir, "voice"))
     }
 }

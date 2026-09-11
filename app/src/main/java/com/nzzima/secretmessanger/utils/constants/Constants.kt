@@ -15,6 +15,7 @@ object Constants {
     const val MESSAGES_COLLECTION = "messages"
     const val AVATARS_COLLECTION = "avatars"
     const val IMAGES_COLLECTION = "images"
+    const val AUDIO_COLLECTION = "audio"
     const val PRESENCE_COLLECTION = "presence"
 
     const val UID_FIELD = "uid"
@@ -36,6 +37,7 @@ object Constants {
 
     const val IMAGE_DATA_FIELD = "data"
     const val LAST_SEEN_FIELD = "lastSeen"
+    const val DURATION_FIELD = "duration"
     const val WIDTH_FIELD = "width"
     const val HEIGHT_FIELD = "height"
 
@@ -102,6 +104,17 @@ object Constants {
 
     /** Насколько старой точке ещё верим без нового замера. */
     const val LOCATION_FRESH_MS = 5 * 60 * 1000L
+
+    /**
+     * Потолок записи. Держит он не вежливость, а лимит документа Firestore в мебибайт: две
+     * минуты в этих настройках — около 360 КБ, треть лимита. Запас нужен потому, что упереться
+     * в лимит значит потерять уже наговорённое на отправке.
+     */
+    const val VOICE_MAX_MS = 120_000L
+
+    /** Моно, 24 кГц и 24 кбит/с — это речь, а не музыка; тот же кодек, что пишет iOS. */
+    const val VOICE_SAMPLE_RATE = 24_000
+    const val VOICE_BIT_RATE = 24_000
 
     const val PHOTO_SIDE = 1280
     const val PHOTO_BUDGET = 700_000
@@ -171,6 +184,13 @@ object Constants {
     const val GROUP_CHAT = "Группа"
     const val ONLINE = "в сети"
     const val ATTACH = "Прикрепить"
+    const val RECORD_VOICE = "Записать голосовое"
+    const val RECORDING = "Запись…"
+    const val RECORD_HINT = "Удерживайте, чтобы записать"
+    const val MIC_DENIED = "Без доступа к микрофону записывать нечем"
+    const val VOICE_FAILED = "Запись не удалась"
+    const val PLAY_VOICE = "Слушать"
+    const val STOP_VOICE = "Остановить"
     const val ATTACH_PHOTO = "Фото"
     const val ATTACH_LOCATION = "Геопозиция"
     const val PHOTO_TOO_LARGE = "Это изображение не удалось уместить в размер сообщения"

@@ -39,6 +39,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -89,9 +91,16 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.geometry.Offset
+import com.nzzima.secretmessanger.ui.components.PlayIcon
+import com.nzzima.secretmessanger.ui.components.StopIcon
 import com.nzzima.secretmessanger.ui.components.PinIcon
 import com.nzzima.secretmessanger.ui.theme.PlaceGround
 import com.nzzima.secretmessanger.ui.theme.PlacePin
+import android.content.pm.PackageManager
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.core.content.ContextCompat
+import com.nzzima.secretmessanger.ui.components.MicIcon
 import com.nzzima.secretmessanger.utils.constants.Constants
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -184,7 +193,10 @@ fun MessangerScreen(
                         replies = current.replies,
                         avatars = current.avatars,
                         photos = current.photos,
+                        playing = current.playing,
+                        progress = current.progress,
                         onOpenPhoto = viewModel::onPhotoOpened,
+                        onPlayVoice = viewModel::onVoicePressed,
                         modifier = Modifier.weight(1f),
                     )
 
@@ -201,11 +213,16 @@ fun MessangerScreen(
                     InputBar(
                         draft = current.draft,
                         canSend = current.canSend,
+                        recordingLeft = current.recordingLeft,
                         onDraftChange = viewModel::onDraftChange,
                         onSend = viewModel::onSend,
                         onPhotoPicked = viewModel::onPhotoPicked,
                         onLocationPicked = viewModel::onLocationPicked,
                         onLocationDenied = viewModel::onLocationDenied,
+                        onRecordStart = viewModel::onRecordStart,
+                        onRecordFinish = viewModel::onRecordFinish,
+                        onRecordCancel = viewModel::onRecordCancel,
+                        onMicDenied = viewModel::onMicDenied,
                     )
                 }
             }
@@ -258,7 +275,10 @@ private fun ReplyList(
     replies: List<Reply>,
     avatars: Map<String, ByteArray>,
     photos: Map<String, ByteArray>,
+    playing: String?,
+    progress: Float,
     onOpenPhoto: (String) -> Unit,
+    onPlayVoice: (String, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (replies.isEmpty()) {
@@ -277,7 +297,15 @@ private fun ReplyList(
         verticalArrangement = Arrangement.spacedBy(REPLY_GAP, Alignment.Bottom),
     ) {
         items(replies.asReversed(), key = { it.id }) { reply ->
-            ReplyRow(reply, avatars[reply.authorId], photos[reply.id], onOpenPhoto)
+            ReplyRow(
+                reply = reply,
+                avatar = avatars[reply.authorId],
+                photo = photos[reply.id],
+                playing = playing == reply.id,
+                progress = progress,
+                onOpenPhoto = onOpenPhoto,
+                onPlayVoice = onPlayVoice,
+            )
         }
     }
 }
@@ -288,7 +316,10 @@ private fun ReplyRow(
     reply: Reply,
     avatar: ByteArray?,
     photo: ByteArray?,
+    playing: Boolean,
+    progress: Float,
     onOpenPhoto: (String) -> Unit,
+    onPlayVoice: (String, Int) -> Unit,
 ) {
     if (reply.service) {
         Text(
@@ -347,6 +378,8 @@ private fun ReplyRow(
 
                 when {
                     reply.photo != null -> PhotoBubble(reply, photo, onOpenPhoto)
+
+                    reply.voice != null -> VoiceBubble(reply, playing, progress, onPlayVoice)
 
                     reply.place != null -> PlaceBubble(reply.place, reply.text)
 
@@ -502,6 +535,103 @@ private fun PhotoSize.bubbleWidth(): Dp {
 }
 
 /**
+ * Микрофон: удержание записывает, отпускание отправляет.
+ *
+ * Удержание, а не нажатие, — как на iOS: короткая запись начинается и кончается одним жестом,
+ * и отдельного «стоп» не нужно. Уведённый с кнопки палец запись **бросает**: передумать после
+ * первых слов человек вправе, и отправлять их было бы грубо.
+ */
+@Composable
+private fun MicButton(
+    recording: Boolean,
+    onStart: () -> Unit,
+    onFinish: () -> Unit,
+    onCancel: () -> Unit,
+    onDenied: () -> Unit,
+) {
+    val context = LocalContext.current
+
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) onDenied()
+    }
+
+    val allowed = {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+    }
+
+    Icon(
+        imageVector = MicIcon,
+        contentDescription = Constants.RECORD_VOICE,
+        tint = if (recording) ErrorColor else Accent,
+        modifier = Modifier
+            .size(MIC_BUTTON)
+            .padding(8.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    // Разрешение спрашивается на первом удержании, а не при открытии экрана:
+                    // спрашивать микрофон у того, кто просто зашёл почитать, незачем.
+                    onPress = {
+                        if (!allowed()) {
+                            permission.launch(Manifest.permission.RECORD_AUDIO)
+                            return@detectTapGestures
+                        }
+
+                        onStart()
+                        if (tryAwaitRelease()) onFinish() else onCancel()
+                    },
+                )
+            },
+    )
+}
+
+/**
+ * Голосовое в пузыре: кнопка, полоска хода и длительность.
+ *
+ * Звук приезжает только по нажатию — качать все записи подряд значило бы платить за
+ * неслушанное. Та же кнопка и останавливает: отдельной «стоп» нет, это одно и то же действие.
+ */
+@Composable
+private fun VoiceBubble(reply: Reply, playing: Boolean, progress: Float, onPlay: (String, Int) -> Unit) {
+    val voice = reply.voice ?: return
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.width(VOICE_WIDTH),
+    ) {
+        Icon(
+            imageVector = if (playing) StopIcon else PlayIcon,
+            contentDescription = if (playing) Constants.STOP_VOICE else Constants.PLAY_VOICE,
+            tint = Ink,
+            modifier = Modifier
+                .size(VOICE_BUTTON)
+                .clip(CircleShape)
+                .clickable { onPlay(reply.id, voice.keyVersion) }
+                .padding(4.dp),
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+            LinearProgressIndicator(
+                progress = { if (playing) progress else 0f },
+                color = Ink,
+                trackColor = InkDim,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Text(text = voice.seconds.asDuration(), color = InkDim, style = TIME_STYLE)
+        }
+    }
+}
+
+/** Длительность в виде «0:07»: секунды с ведущим нулём, минуты без. */
+private fun Double.asDuration(): String {
+    val total = toInt().coerceAtLeast(0)
+
+    return "${total / 60}:${(total % 60).toString().padStart(2, '0')}"
+}
+
+/**
  * Точка на карте.
  *
  * **Настоящей карты здесь нет и быть не может.** Офлайн у приложения нет ни тайлов, ни
@@ -591,11 +721,16 @@ private fun PlaceGrid(place: Place) {
 private fun InputBar(
     draft: String,
     canSend: Boolean,
+    recordingLeft: Int?,
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
     onPhotoPicked: (String) -> Unit,
     onLocationPicked: () -> Unit,
     onLocationDenied: () -> Unit,
+    onRecordStart: () -> Unit,
+    onRecordFinish: () -> Unit,
+    onRecordCancel: () -> Unit,
+    onMicDenied: () -> Unit,
 ) {
     HorizontalDivider(color = MaterialTheme.colorScheme.surface)
 
@@ -605,22 +740,39 @@ private fun InputBar(
     ) {
         AttachButton(onPhotoPicked, onLocationPicked, onLocationDenied)
 
-        Field(
-            value = draft,
-            onValueChange = onDraftChange,
-            placeholder = Constants.MESSAGE_PLACEHOLDER,
-            modifier = Modifier.weight(1f),
-            capitalization = KeyboardCapitalization.Sentences,
-            autoCorrect = true,
-            maxLines = INPUT_MAX_LINES,
-        )
-
-        IconButton(onClick = onSend, enabled = canSend) {
-            Icon(
-                imageVector = SendIcon,
-                contentDescription = Constants.SEND_MESSAGE,
-                tint = if (canSend) Accent else InkDim,
+        if (recordingLeft == null) {
+            Field(
+                value = draft,
+                onValueChange = onDraftChange,
+                placeholder = Constants.MESSAGE_PLACEHOLDER,
+                modifier = Modifier.weight(1f),
+                capitalization = KeyboardCapitalization.Sentences,
+                autoCorrect = true,
+                maxLines = INPUT_MAX_LINES,
             )
+        } else {
+            // Счёт идёт вниз: важно, сколько ещё можно говорить, а не сколько уже сказано.
+            Text(
+                text = "${Constants.RECORDING} $recordingLeft",
+                color = ErrorColor,
+                fontSize = 15.sp,
+                modifier = Modifier.weight(1f).padding(start = 8.dp, bottom = 12.dp),
+            )
+        }
+
+        // Микрофон стоит на месте стрелки, а не рядом: обе кнопки означают «отправить
+        // сейчас», и держать их одновременно — значит спорить с шириной панели. Пустое поле
+        // отправлять нечем, поэтому там микрофон; появился текст — появилась стрелка.
+        if (draft.isBlank()) {
+            MicButton(recordingLeft != null, onRecordStart, onRecordFinish, onRecordCancel, onMicDenied)
+        } else {
+            IconButton(onClick = onSend, enabled = canSend) {
+                Icon(
+                    imageVector = SendIcon,
+                    contentDescription = Constants.SEND_MESSAGE,
+                    tint = if (canSend) Accent else InkDim,
+                )
+            }
         }
     }
 }
@@ -634,6 +786,9 @@ private val BUBBLE_AVATAR = 30.dp
 private val PHOTO_WIDTH = 220.dp
 private val PHOTO_MAX_HEIGHT = 260.dp
 private val PLACE_HEIGHT = 120.dp
+private val VOICE_WIDTH = 180.dp
+private val VOICE_BUTTON = 32.dp
+private val MIC_BUTTON = 48.dp
 private val PIN_SIZE = 34.dp
 private const val GRID_ROWS = 4
 private const val GRID_COLUMNS = 6

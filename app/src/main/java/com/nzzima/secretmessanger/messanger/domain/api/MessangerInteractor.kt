@@ -4,6 +4,7 @@ import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.Moment
 import com.nzzima.secretmessanger.messanger.domain.models.Dialogue
 import com.nzzima.secretmessanger.messanger.domain.models.Place
+import com.nzzima.secretmessanger.voice.domain.models.Recording
 import kotlinx.coroutines.flow.Flow
 
 /** Переписка одного диалога: что показать и что отправить. */
@@ -47,6 +48,15 @@ interface MessangerInteractor {
      *   диалога у нас нет: открытым снимок в базу не уйдёт.
      */
     suspend fun sendPhoto(chat: Chat, source: String): Result<Unit>
+
+    /**
+     * Отправляет записанное голосовое [recording] в диалог [chat].
+     *
+     * Две записи в том же порядке, что у снимка: сперва байты в `audio/{messageId}`, потом
+     * сообщение о них с длительностью. В теле и в шапке — запечатанное «🎤 Голосовое
+     * сообщение»: без превью диалог из одних голосовых выпал бы из «Чатов».
+     */
+    suspend fun sendVoice(chat: Chat, recording: Recording): Result<Unit>
 
     /**
      * Отправляет точку [place] в диалог [chat].

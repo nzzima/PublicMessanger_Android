@@ -100,6 +100,8 @@ private fun Message.payload(date: Timestamp): Map<String, Any> = buildMap {
         put(Constants.HEIGHT_FIELD, it.height.toDouble())
     }
 
+    seconds?.let { put(Constants.DURATION_FIELD, it) }
+
     if (encrypted) {
         put(Constants.ENCRYPTED_FIELD, 1)
         put(Constants.VERSION_FIELD, version)
@@ -131,6 +133,7 @@ private fun DocumentSnapshot.toMessage() = Message(
     date = getTimestamp(Constants.DATE_FIELD)?.toMoment() ?: Moment.of(System.currentTimeMillis()),
     kind = getString(Constants.TYPE_FIELD).toKind(),
     size = photoSize(),
+    seconds = getDouble(Constants.DURATION_FIELD),
 )
 
 /**

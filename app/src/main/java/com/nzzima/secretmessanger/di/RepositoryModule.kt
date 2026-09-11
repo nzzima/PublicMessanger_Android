@@ -33,6 +33,12 @@ import com.nzzima.secretmessanger.presence.domain.api.PresenceRepository
 import com.nzzima.secretmessanger.profile.data.impl.ProfileReaderImpl
 import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.session.data.impl.SessionRepositoryImpl
+import com.nzzima.secretmessanger.voice.data.impl.VoicePlayerImpl
+import com.nzzima.secretmessanger.voice.data.impl.VoiceRecorderImpl
+import com.nzzima.secretmessanger.voice.data.impl.VoiceRepositoryImpl
+import com.nzzima.secretmessanger.voice.domain.api.VoicePlayer
+import com.nzzima.secretmessanger.voice.domain.api.VoiceRecorder
+import com.nzzima.secretmessanger.voice.domain.api.VoiceRepository
 import com.nzzima.secretmessanger.session.domain.api.SessionCloser
 import com.nzzima.secretmessanger.session.domain.api.SessionReader
 import com.nzzima.secretmessanger.session.domain.api.SessionValidator
@@ -102,6 +108,19 @@ val repositoryModule = module {
 
     single<PresenceRepository> {
         PresenceRepositoryImpl(get())
+    }
+
+    single<VoiceRepository> {
+        VoiceRepositoryImpl(get())
+    }
+
+    // Рекордер одиночка: микрофон один, и второй экземпляр отбирал бы его у первого.
+    single<VoiceRecorder> {
+        VoiceRecorderImpl(androidContext())
+    }
+
+    single<VoicePlayer> {
+        VoicePlayerImpl()
     }
 
     single<MessageRepository> {

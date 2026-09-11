@@ -11,10 +11,14 @@ import com.nzzima.secretmessanger.messanger.domain.api.MessangerInteractor
 import com.nzzima.secretmessanger.messanger.domain.models.Dialogue
 import com.nzzima.secretmessanger.photo.domain.api.PhotoInteractor
 import com.nzzima.secretmessanger.presence.domain.api.PresenceInteractor
+import com.nzzima.secretmessanger.voice.domain.api.VoiceInteractor
+import com.nzzima.secretmessanger.voice.domain.api.VoicePlayer
+import com.nzzima.secretmessanger.voice.domain.api.VoiceRecorder
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +46,9 @@ class MessangerViewModel(
     private val photoInteractor: PhotoInteractor,
     private val locationSource: LocationSource,
     private val presenceInteractor: PresenceInteractor,
+    private val voiceInteractor: VoiceInteractor,
+    private val voiceRecorder: VoiceRecorder,
+    private val voicePlayer: VoicePlayer,
 ) : ViewModel() {
 
     private val messangerScreenState = MutableStateFlow<MessangerUiState>(MessangerUiState.Loading)
@@ -55,6 +62,10 @@ class MessangerViewModel(
 
     /** Подписка на присутствие собеседника; у группы её нет. */
     private var presence: Job? = null
+
+    /** Обратный отсчёт записи и подписка на звучащее — по одной за раз. */
+    private var countdown: Job? = null
+    private var playback: Job? = null
 
     /**
      * Шапка последнего снимка — ею запечатывается отправляемое.
@@ -239,6 +250,106 @@ class MessangerViewModel(
     }
 
     /**
+     * Начинает запись голосового.
+     *
+     * Разрешение спрашивает экран и зовёт это только с ним. Отказ самого рекордера — занятый
+     * микрофон или некуда писать — показывается строкой: молча проглотить удержание значило
+     * бы оставить человека говорить в пустоту.
+     */
+    fun onRecordStart() {
+        if (!voiceRecorder.start()) {
+            update { it.copy(error = Constants.VOICE_FAILED) }
+            return
+        }
+
+        update { it.copy(recordingLeft = (Constants.VOICE_MAX_MS / MILLIS_IN_SECOND).toInt(), error = null) }
+
+        countdown = viewModelScope.launch {
+            while (true) {
+                delay(MILLIS_IN_SECOND)
+
+                val left = ((messangerScreenState.value as? MessangerUiState.Content)?.recordingLeft ?: 0) - 1
+
+                // Дойдя до потолка, рекордер останавливается сам, и наговорённое остаётся в
+                // файле. Экрану остаётся отправить его, как будто палец подняли вовремя.
+                if (left <= 0) {
+                    onRecordFinish()
+                    return@launch
+                }
+
+                update { it.copy(recordingLeft = left) }
+            }
+        }
+    }
+
+    /** Палец подняли: запись заканчивается и уходит в диалог. */
+    fun onRecordFinish() {
+        countdown?.cancel()
+        countdown = null
+        update { it.copy(recordingLeft = null) }
+
+        // Слишком короткое нажатие звука не содержит — рекордер отдаёт null, и отправлять
+        // нечего. Ошибки тут тоже нет: человек просто ткнул в микрофон.
+        val recording = voiceRecorder.stop() ?: return
+
+        sending { chat -> messangerInteractor.sendVoice(chat, recording) }
+    }
+
+    /** Запись брошена: палец увели с кнопки. */
+    fun onRecordCancel() {
+        countdown?.cancel()
+        countdown = null
+        voiceRecorder.cancel()
+        update { it.copy(recordingLeft = null) }
+    }
+
+    /** Разрешения на микрофон не дали: записывать нечем. */
+    fun onMicDenied() = update { it.copy(error = Constants.MIC_DENIED) }
+
+    /**
+     * Включает или выключает звучание реплики [messageId].
+     *
+     * Второе нажатие по звучащей останавливает: отдельной кнопки «стоп» нет — та же кнопка
+     * и означает «хватит».
+     */
+    fun onVoicePressed(messageId: String, version: Int) {
+        val chat = chat ?: return
+        val current = messangerScreenState.value as? MessangerUiState.Content ?: return
+
+        playback?.cancel()
+        playback = null
+
+        if (current.playing == messageId) {
+            update { it.copy(playing = null, progress = 0f) }
+            return
+        }
+
+        playback = viewModelScope.launch {
+            val file = voiceInteractor.voice(chat, messageId, version)
+
+            if (file == null) {
+                update { it.copy(error = Constants.UNREADABLE) }
+                return@launch
+            }
+
+            update { it.copy(playing = messageId, progress = 0f) }
+
+            voicePlayer.play(file).collect { progress ->
+                update { it.copy(progress = progress) }
+            }
+
+            // Поток кончается вместе с записью — это и есть «доиграло».
+            update { it.copy(playing = null, progress = 0f) }
+        }
+    }
+
+    /** Правка состояния экрана, когда оно содержательное; иначе оставляем как есть. */
+    private fun update(change: (MessangerUiState.Content) -> MessangerUiState.Content) =
+        messangerScreenState.update { current ->
+            if (current is MessangerUiState.Content) change(current) else current
+        }
+
+    /**
      * Отмечает прочтение по последней чужой реплике.
      *
      * Отсев повторов — дело сценария: он сверяется с отметкой из шапки, а та только растёт.
@@ -286,6 +397,8 @@ class MessangerViewModel(
 
         subscription?.cancel()
         presence?.cancel()
+        playback?.cancel()
+        playback = null
         presence = null
         messangerScreenState.value = MessangerUiState.Loading
         // Подписка начинается с пустого состояния, поэтому и спрошенных помним заново.
@@ -326,5 +439,9 @@ class MessangerViewModel(
                     }
             }
         }
+    }
+
+    private companion object {
+        const val MILLIS_IN_SECOND = 1000L
     }
 }

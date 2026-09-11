@@ -9,6 +9,11 @@ import com.nzzima.secretmessanger.messanger.domain.models.MessageKind
 import com.nzzima.secretmessanger.messanger.domain.models.Place
 import com.nzzima.secretmessanger.photo.domain.api.PhotoInteractor
 import com.nzzima.secretmessanger.photo.domain.models.PhotoSize
+import com.nzzima.secretmessanger.voice.domain.api.VoiceInteractor
+import com.nzzima.secretmessanger.voice.domain.api.VoicePlayer
+import com.nzzima.secretmessanger.voice.domain.api.VoiceRecorder
+import com.nzzima.secretmessanger.voice.domain.models.Recording
+import java.io.File
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -67,6 +72,7 @@ fun message(
     date: Moment = Moment(0, 0),
     kind: MessageKind = MessageKind.Text,
     size: PhotoSize? = null,
+    seconds: Double? = null,
 ) = Message(
     id = id,
     senderId = senderId,
@@ -76,6 +82,7 @@ fun message(
     date = date,
     kind = kind,
     size = size,
+    seconds = seconds,
 )
 
 /** [PhotoInteractor] в памяти: отдаёт заданные байты и помнит, о чём спрашивали. */
@@ -117,4 +124,82 @@ class FakeLocationSource(private val place: Place? = Place(55.75, 37.62)) : Loca
         requests++
         return place
     }
+}
+
+/** [VoiceInteractor] в памяти: файл отдаёт заданный, приложенное помнит. */
+class FakeVoiceInteractor(private val file: File? = File("voice.m4a")) : VoiceInteractor {
+
+    /** Пары «реплика + версия ключа», звук которых заказывали. */
+    val requested = mutableListOf<Pair<String, Int>>()
+
+    /** Приложенное: пары «реплика + файл». */
+    val attached = mutableListOf<Pair<String, File>>()
+
+    /** Чем отказывает вложение; `null` — проходит. */
+    var refusal: Throwable? = null
+
+    override suspend fun voice(chat: Chat, messageId: String, version: Int): File? {
+        requested += messageId to version
+        return file
+    }
+
+    override suspend fun attach(chat: Chat, messageId: String, file: File): Result<Unit> {
+        refusal?.let { return Result.failure(it) }
+
+        attached += messageId to file
+        return Result.success(Unit)
+    }
+}
+
+/** [VoiceRecorder], которым распоряжается тест. */
+class FakeVoiceRecorder(private var result: Recording? = Recording(File("voice.m4a"), seconds = 3.0)) : VoiceRecorder {
+
+    override var isRecording = false
+        private set
+
+    /** Сколько раз запись бросали. */
+    var cancels = 0
+        private set
+
+    /** Пускать ли запись вообще: `false` — микрофон занят. */
+    var starts = true
+
+    override fun start(): Boolean {
+        if (!starts) return false
+
+        isRecording = true
+        return true
+    }
+
+    override fun stop(): Recording? {
+        isRecording = false
+        return result
+    }
+
+    override fun cancel() {
+        isRecording = false
+        cancels++
+    }
+
+    /** Задаёт, что вернёт следующая остановка; `null` — записи не вышло. */
+    fun records(recording: Recording?) {
+        result = recording
+    }
+}
+
+/** [VoicePlayer] в памяти: ход проигрывания подаёт тест. */
+class FakeVoicePlayer : VoicePlayer {
+
+    private val progress = MutableSharedFlow<Float>(replay = 1, extraBufferCapacity = 8)
+
+    /** Файлы, которые просили сыграть. */
+    val played = mutableListOf<File>()
+
+    override fun play(file: File): Flow<Float> {
+        played += file
+        return progress
+    }
+
+    /** Двигает полоску. */
+    fun to(value: Float) = progress.tryEmit(value)
 }

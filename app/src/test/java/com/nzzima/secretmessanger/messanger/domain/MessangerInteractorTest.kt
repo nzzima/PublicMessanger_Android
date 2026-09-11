@@ -26,6 +26,8 @@ import org.junit.Assert.assertTrue
 import com.nzzima.secretmessanger.messanger.domain.models.Place
 import com.nzzima.secretmessanger.photo.domain.models.PhotoSize
 import com.nzzima.secretmessanger.photo.domain.models.PhotoTooLarge
+import com.nzzima.secretmessanger.voice.domain.models.Recording
+import java.io.File
 import org.junit.Test
 
 /**
@@ -37,10 +39,11 @@ import org.junit.Test
 class MessangerInteractorTest {
 
     private val photos = FakePhotoInteractor()
+    private val voices = FakeVoiceInteractor()
     private val identityKeys = IdentityKeyStoreImpl(FakeSharedPreferences(), FakeMasterKeyProvider())
     private val conversations = FakeConversationRepository()
     private val messages = FakeMessageRepository()
-    private val interactor = MessangerInteractorImpl(conversations, messages, ConversationKeysImpl(identityKeys), photos)
+    private val interactor = MessangerInteractorImpl(conversations, messages, ConversationKeysImpl(identityKeys), photos, voices)
 
     private val identityPrivate = identityKeys.createNew("uid-1")
 
@@ -403,5 +406,51 @@ class MessangerInteractorTest {
 
         assertNull("врать точкой посреди океана хуже, чем не показать", reply.place)
         assertEquals(Constants.LOCATION_MESSAGE, reply.text)
+    }
+
+    @Test
+    fun `голосовое уходит двумя записями, длительность едет в сообщении`() = runTest {
+        val (chat, key) = sealedChat()
+
+        assertTrue(interactor.sendVoice(chat, Recording(File("voice.m4a"), seconds = 7.5)).isSuccess)
+
+        val (_, message) = messages.sent.single()
+        assertEquals("байты кладутся под тем же идентификатором", listOf(message.id), voices.attached.map { it.first })
+        assertEquals(MessageKind.Voice, message.kind)
+        assertEquals(7.5, message.seconds!!, 0.001)
+        assertEquals(Constants.VOICE_MESSAGE, CryptoBox.open(message.body, key))
+        assertEquals("диалог из одних голосовых не должен выпадать из «Чатов»", message.body, messages.previews.single())
+    }
+
+    @Test
+    fun `не записавшееся голосовое не пишет сообщения вовсе`() = runTest {
+        val (chat, _) = sealedChat()
+        voices.refusal = IllegalStateException("нет связи")
+
+        val result = interactor.sendVoice(chat, Recording(File("voice.m4a"), seconds = 3.0))
+
+        assertEquals("нет связи", result.exceptionOrNull()?.message)
+        assertTrue("пузырь вёл бы в пустоту", messages.sent.isEmpty())
+    }
+
+    @Test
+    fun `голосовое в ленте несёт длительность и свою версию ключа`() = runTest {
+        val (chat, key) = sealedChat(version = 1)
+        conversations.sendChat(chat)
+        messages.send(
+            listOf(
+                message(
+                    body = CryptoBox.seal(Constants.VOICE_MESSAGE, key),
+                    encrypted = true,
+                    kind = MessageKind.Voice,
+                    seconds = 12.5,
+                ),
+            ),
+        )
+
+        val voice = replies().single().voice
+
+        assertEquals(12.5, voice!!.seconds, 0.001)
+        assertEquals("записанное до ротации открывается прежним ключом", 1, voice.keyVersion)
     }
 }

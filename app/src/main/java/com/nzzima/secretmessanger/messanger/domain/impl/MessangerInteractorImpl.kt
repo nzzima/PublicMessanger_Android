@@ -14,9 +14,12 @@ import com.nzzima.secretmessanger.messanger.domain.models.Message
 import com.nzzima.secretmessanger.messanger.domain.models.MessageKind
 import com.nzzima.secretmessanger.messanger.domain.models.Place
 import com.nzzima.secretmessanger.messanger.domain.models.PhotoAttachment
+import com.nzzima.secretmessanger.messanger.domain.models.VoiceAttachment
 import com.nzzima.secretmessanger.messanger.domain.models.Reply
 import com.nzzima.secretmessanger.photo.domain.api.PhotoInteractor
 import com.nzzima.secretmessanger.photo.domain.models.PhotoSize
+import com.nzzima.secretmessanger.voice.domain.api.VoiceInteractor
+import com.nzzima.secretmessanger.voice.domain.models.Recording
 import com.nzzima.secretmessanger.utils.constants.Constants
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +31,7 @@ class MessangerInteractorImpl(
     private val messages: MessageRepository,
     private val conversationKeys: ConversationKeys,
     private val photos: PhotoInteractor,
+    private val voices: VoiceInteractor,
 ) : MessangerInteractor {
 
     /**
@@ -66,6 +70,23 @@ class MessangerInteractorImpl(
         return write(chat, MessageKind.Photo, payload, preview = payload, id = messageId, size = size)
     }
 
+    override suspend fun sendVoice(chat: Chat, recording: Recording): Result<Unit> {
+        val messageId = UUID.randomUUID().toString()
+
+        voices.attach(chat, messageId, recording.file).getOrElse { return Result.failure(it) }
+
+        val payload = sealed(chat, Constants.VOICE_MESSAGE) ?: return Result.failure(CryptoFailure.NoKey)
+
+        return write(
+            chat = chat,
+            kind = MessageKind.Voice,
+            payload = payload,
+            preview = payload,
+            id = messageId,
+            seconds = recording.seconds,
+        )
+    }
+
     override suspend fun sendLocation(chat: Chat, place: Place): Result<Unit> {
         val payload = sealed(chat, Place.payload(place.latitude, place.longitude))
             ?: return Result.failure(CryptoFailure.NoKey)
@@ -91,6 +112,7 @@ class MessangerInteractorImpl(
         // Идентификатор задаётся здесь, а не базой: тот же формат, что на iOS.
         id: String = UUID.randomUUID().toString(),
         size: PhotoSize? = null,
+        seconds: Double? = null,
     ): Result<Unit> = messages.send(
         convoId = chat.id,
         message = Message(
@@ -102,6 +124,7 @@ class MessangerInteractorImpl(
             date = Moment.of(System.currentTimeMillis()),
             kind = kind,
             size = size,
+            seconds = seconds,
         ),
         preview = preview,
     )
@@ -129,6 +152,7 @@ class MessangerInteractorImpl(
         service = kind == MessageKind.KeyNotice,
         photo = size?.takeIf { kind == MessageKind.Photo }?.let { PhotoAttachment(it, version) },
         place = place(chat),
+        voice = seconds?.takeIf { kind == MessageKind.Voice }?.let { VoiceAttachment(it, version) },
     )
 
     /**

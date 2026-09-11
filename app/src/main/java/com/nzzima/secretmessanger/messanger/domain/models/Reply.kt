@@ -21,6 +21,8 @@ package com.nzzima.secretmessanger.messanger.domain.models
  *   пузырь верстается по размерам, иначе лента прыгала бы на каждой догрузке.
  * @property place точка на карте; `null` — реплика не точка либо координаты не
  *   разобрались (чужой формат или нет ключа).
+ * @property voice голосовое; `null` — реплика не голосовое. Звук приезжает отдельно и
+ *   только по нажатию: качать все записи подряд означало бы платить за неслушанное.
  * @property service отметка о смене ключа: строка посреди ленты, без пузыря и автора.
  */
 data class Reply(
@@ -35,4 +37,5 @@ data class Reply(
     val service: Boolean,
     val photo: PhotoAttachment? = null,
     val place: Place? = null,
+    val voice: VoiceAttachment? = null,
 )

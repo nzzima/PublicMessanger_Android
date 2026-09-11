@@ -21,6 +21,10 @@ import com.nzzima.secretmessanger.photo.domain.api.PhotoInteractor
 import com.nzzima.secretmessanger.photo.domain.api.PhotoRepository
 import com.nzzima.secretmessanger.presence.domain.api.PresenceInteractor
 import com.nzzima.secretmessanger.presence.domain.api.PresenceRepository
+import com.nzzima.secretmessanger.voice.domain.api.VoiceInteractor
+import com.nzzima.secretmessanger.voice.domain.api.VoicePlayer
+import com.nzzima.secretmessanger.voice.domain.api.VoiceRecorder
+import com.nzzima.secretmessanger.voice.domain.api.VoiceRepository
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
@@ -98,6 +102,7 @@ class ModulesTest {
                 PhotoRepository::class,
                 PhotoEncoder::class,
                 PresenceRepository::class,
+                VoiceRepository::class,
             ),
         )
 
@@ -116,6 +121,9 @@ class ModulesTest {
                 AvatarInteractor::class,
                 PhotoInteractor::class,
                 PresenceInteractor::class,
+                VoiceInteractor::class,
+                VoiceRecorder::class,
+                VoicePlayer::class,
                 LocationSource::class,
                 MessangerInteractor::class,
                 ConversationStarter::class,
