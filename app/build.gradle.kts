@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.exifinterface)
+    implementation(libs.androidx.biometric)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)

@@ -20,6 +20,7 @@ import com.nzzima.secretmessanger.photo.domain.api.PhotoEncoder
 import com.nzzima.secretmessanger.photo.domain.api.PhotoInteractor
 import com.nzzima.secretmessanger.photo.domain.api.PhotoRepository
 import com.nzzima.secretmessanger.presence.domain.api.PresenceInteractor
+import com.nzzima.secretmessanger.lock.domain.api.BiometricGate
 import com.nzzima.secretmessanger.presence.domain.api.PresenceRepository
 import com.nzzima.secretmessanger.voice.domain.api.VoiceInteractor
 import com.nzzima.secretmessanger.voice.domain.api.VoicePlayer
@@ -121,6 +122,7 @@ class ModulesTest {
                 AvatarInteractor::class,
                 PhotoInteractor::class,
                 PresenceInteractor::class,
+                BiometricGate::class,
                 VoiceInteractor::class,
                 VoiceRecorder::class,
                 VoicePlayer::class,

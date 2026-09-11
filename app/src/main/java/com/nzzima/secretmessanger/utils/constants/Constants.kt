@@ -61,6 +61,7 @@ object Constants {
     const val MASTER_KEY_ALIAS = "com.nzzima.secretmessanger.master"
 
     const val AUTH_ROUTE = "auth"
+    const val LOCK_ROUTE = "lock"
     const val EXPIRED_ROUTE = "expired"
     const val IDENTITY_ROUTE = "identity"
     const val REPAIR_ROUTE = "repair"
@@ -86,6 +87,16 @@ object Constants {
     const val MESSAGE_WINDOW = 50L
 
     const val FIRST_KEY_VERSION = 1
+
+    /**
+     * Сколько можно отсутствовать, чтобы приложение не переспрашивало замок.
+     *
+     * Без порога биометрия срабатывала бы на каждое переключение — сходить за ссылкой,
+     * ответить на звонок, посмотреть код из СМС. Приложение, которое переспрашивает по десять
+     * раз на дню, выключают целиком, и защиты от него остаётся ноль. Минута — это «отвлёкся»,
+     * а не «ушёл».
+     */
+    const val LOCK_GRACE_MS = 60_000L
 
     /** Как часто приложение отмечается, пока оно на экране. */
     const val PRESENCE_HEARTBEAT_MS = 30_000L
@@ -183,6 +194,10 @@ object Constants {
     const val NOTE_PLACEHOLDER = "Заметка о себе"
     const val GROUP_CHAT = "Группа"
     const val ONLINE = "в сети"
+    const val LOCK_TITLE = "Подтвердите, что это вы"
+    const val LOCK_HINT = "Переписка откроется после подтверждения"
+    const val LOCK_UNLOCK = "Подтвердить"
+    const val LOCK_FAILED = "Подтвердить не вышло"
     const val ATTACH = "Прикрепить"
     const val RECORD_VOICE = "Записать голосовое"
     const val RECORDING = "Запись…"

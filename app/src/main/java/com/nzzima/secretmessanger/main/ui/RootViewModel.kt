@@ -6,6 +6,8 @@ import com.nzzima.secretmessanger.auth.domain.api.ProfileRepairInteractor
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationProgress
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityInteractor
 import com.nzzima.secretmessanger.crypto.domain.models.IdentityState
+import com.nzzima.secretmessanger.lock.domain.api.BiometricGate
+import com.nzzima.secretmessanger.lock.domain.models.ReturnLock
 import com.nzzima.secretmessanger.presence.domain.api.PresenceInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.session.domain.models.Session
@@ -46,6 +48,8 @@ class RootViewModel(
     private val profileRepairInteractor: ProfileRepairInteractor,
     private val registrationProgress: RegistrationProgress,
     private val presenceInteractor: PresenceInteractor,
+    private val biometricGate: BiometricGate,
+    private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
     private val rootState = MutableStateFlow<RootState>(RootState.Checking)
@@ -53,17 +57,45 @@ class RootViewModel(
     /** Виден ли экран: пульс бьётся, только пока приложение на глазах. */
     private val visible = MutableStateFlow(false)
 
+    /** Подтвердил ли владелец себя в этом запуске. */
+    private var unlocked = false
+
+    /** Когда ушли в фон с рабочего окна; `null` — не уходили или уходили не оттуда. */
+    private var leftAt: Long? = null
+
     /** Текущее состояние оболочки. */
     fun observeRootState(): StateFlow<RootState> = rootState.asStateFlow()
 
-    /** Экран показался: с этого мига человек числится в сети. */
+    /**
+     * Экран показался: с этого мига человек числится в сети — если приложение не заперто.
+     *
+     * Вернувшись из фона позже, чем через [Constants.LOCK_GRACE_MS], приложение запирается
+     * снова: замок, который спрашивают раз при запуске, охраняет ровно первый запуск.
+     */
     fun onVisible() {
         visible.value = true
+
+        if (ReturnLock.shouldLock(wasReady = leftAt != null, leftAt = leftAt, now = now())) {
+            unlocked = false
+            rootState.value = RootState.Locked
+        }
+
+        leftAt = null
     }
 
     /** Экран ушёл с глаз — пульс прекращается, и человек гаснет сам через окно присутствия. */
     fun onHidden() {
         visible.value = false
+
+        // Засекаем только уход с рабочего окна: на замке и на входе запирать нечего, а
+        // лишний переход сбросил бы наполовину введённый пароль.
+        leftAt = now().takeIf { rootState.value == RootState.Ready }
+    }
+
+    /** Владелец подтвердил себя: приложение открывается. */
+    fun onUnlocked() {
+        unlocked = true
+        rootState.value = RootState.Ready
     }
 
     init {
@@ -109,7 +141,7 @@ class RootViewModel(
         rootState.value = RootState.Checking
         viewModelScope.launch {
             identityInteractor.publishOverwriting(uid)
-                .onSuccess { rootState.value = RootState.Ready }
+                .onSuccess { rootState.value = ready() }
                 .onFailure { rootState.value = RootState.Failed(it.message ?: Constants.SERVER_SILENT) }
         }
     }
@@ -130,8 +162,11 @@ class RootViewModel(
         }
     }
 
-    /** Завершает сессию. Ключ на устройстве не стирается. */
-    fun signOut() = sessionInteractor.signOut()
+    /** Завершает сессию. Ключ на устройстве не стирается, а замок спросят заново. */
+    fun signOut() {
+        unlocked = false
+        sessionInteractor.signOut()
+    }
 
     private suspend fun prepare(uid: String) {
         rootState.value = RootState.Checking
@@ -161,12 +196,22 @@ class RootViewModel(
         identityInteractor.prepare(uid)
             .onSuccess {
                 rootState.value = when (it) {
-                    IdentityState.Ready -> RootState.Ready
+                    IdentityState.Ready -> ready()
                     IdentityState.NeedsConfirmation -> RootState.NeedsConfirmation
                 }
             }
             .onFailure { rootState.value = RootState.Failed(it.message ?: Constants.SERVER_SILENT) }
     }
+
+    /**
+     * Рабочее окно или замок перед ним.
+     *
+     * Замок не ставится, когда подтвердить нечем: ни биометрии, ни код-пароля на телефоне
+     * может не быть вовсе, и запертое наглухо приложение — худшая из защит. На iOS в этом
+     * случае показывают алерт, но там код-пароль есть всегда.
+     */
+    private fun ready(): RootState =
+        if (!unlocked && biometricGate.isAvailable()) RootState.Locked else RootState.Ready
 
     private fun uidOrNull() = (sessionInteractor.observeSession().value as? Session.Authenticated)?.uid
 }

@@ -19,6 +19,7 @@ import com.nzzima.secretmessanger.crypto.ui.IdentityScreen
 import com.nzzima.secretmessanger.session.ui.SessionExpiredScreen
 import com.nzzima.secretmessanger.utils.constants.Constants
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.nzzima.secretmessanger.lock.ui.LockScreen
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -54,6 +55,7 @@ fun AppNavHost(
         RootState.Checking -> Destination.Loading
         is RootState.NeedsProfile -> Destination.Repair
         RootState.NeedsConfirmation, is RootState.Failed -> Destination.Identity
+        RootState.Locked -> Destination.Lock
         RootState.Ready -> Destination.Main
     }
 
@@ -75,6 +77,9 @@ fun AppNavHost(
         }
         composable(Destination.Auth.route) {
             AuthScreen()
+        }
+        composable(Destination.Lock.route) {
+            LockScreen(onUnlocked = viewModel::onUnlocked)
         }
         composable(Destination.Expired.route) {
             SessionExpiredScreen(onSignIn = viewModel::signOut)

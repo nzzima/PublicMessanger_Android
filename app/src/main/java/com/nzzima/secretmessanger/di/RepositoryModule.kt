@@ -23,6 +23,8 @@ import com.nzzima.secretmessanger.crypto.domain.api.PublicKeyRepository
 import com.nzzima.secretmessanger.messanger.data.impl.MessageRepositoryImpl
 import com.nzzima.secretmessanger.messanger.data.impl.LocationSourceImpl
 import com.nzzima.secretmessanger.messanger.domain.api.LocationSource
+import com.nzzima.secretmessanger.lock.data.impl.BiometricGateImpl
+import com.nzzima.secretmessanger.lock.domain.api.BiometricGate
 import com.nzzima.secretmessanger.messanger.domain.api.MessageRepository
 import com.nzzima.secretmessanger.photo.data.impl.PhotoEncoderImpl
 import com.nzzima.secretmessanger.photo.data.impl.PhotoRepositoryImpl
@@ -108,6 +110,10 @@ val repositoryModule = module {
 
     single<PresenceRepository> {
         PresenceRepositoryImpl(get())
+    }
+
+    single<BiometricGate> {
+        BiometricGateImpl(androidContext())
     }
 
     single<VoiceRepository> {

@@ -48,6 +48,6 @@ val viewModelModule = module {
     }
 
     viewModel {
-        RootViewModel(get(), get(), get(), get(), get())
+        RootViewModel(get(), get(), get(), get(), get(), get())
     }
 }

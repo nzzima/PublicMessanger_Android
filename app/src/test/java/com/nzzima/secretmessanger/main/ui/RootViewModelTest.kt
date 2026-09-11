@@ -5,6 +5,7 @@ import com.nzzima.secretmessanger.auth.domain.FakeProfileRepository
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationProgress
 import com.nzzima.secretmessanger.auth.domain.impl.ProfileRepairInteractorImpl
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityInteractor
+import com.nzzima.secretmessanger.lock.FakeBiometricGate
 import com.nzzima.secretmessanger.presence.domain.FakePresenceInteractor
 import com.nzzima.secretmessanger.crypto.domain.models.IdentityState
 import com.nzzima.secretmessanger.session.domain.FakeSessionRepository
@@ -44,6 +45,8 @@ class RootViewModelTest {
     private var logins = FakeLoginRepository()
     private val progress = FakeRegistrationProgress()
     private val presence = FakePresenceInteractor()
+    private val gate = FakeBiometricGate()
+    private var clock = 1_000_000L
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 
@@ -55,7 +58,8 @@ class RootViewModelTest {
         ProfileRepairInteractorImpl(profiles, logins),
         progress,
         presence,
-    )
+        gate,
+    ) { clock }
 
     private fun RootViewModel.state() = observeRootState().value
 
@@ -243,6 +247,78 @@ class RootViewModelTest {
         assertNull(presence.beating)
     }
 
+
+    @Test
+    fun `с настроенной биометрией приложение открывается запертым`() = runTest(dispatcher) {
+        gate.available = true
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame(RootState.Locked, model.state())
+        assertNull("запертое приложение не отмечается в сети", presence.beating)
+    }
+
+    @Test
+    fun `подтверждение открывает чаты`() = runTest(dispatcher) {
+        gate.available = true
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        model.onUnlocked()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame(RootState.Ready, model.state())
+        assertEquals("uid-1", presence.beating)
+    }
+
+    @Test
+    fun `подтверждать нечем — замка нет вовсе`() = runTest(dispatcher) {
+        gate.available = false
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame("запертое наглухо приложение — худшая из защит", RootState.Ready, model.state())
+    }
+
+    @Test
+    fun `короткая отлучка не запирает заново`() = runTest(dispatcher) {
+        gate.available = true
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+        model.onUnlocked()
+
+        model.onHidden()
+        clock += 5_000
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame(RootState.Ready, model.state())
+    }
+
+    @Test
+    fun `долгая отлучка запирает заново`() = runTest(dispatcher) {
+        gate.available = true
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+        model.onUnlocked()
+
+        model.onHidden()
+        clock += com.nzzima.secretmessanger.utils.constants.Constants.LOCK_GRACE_MS + 1
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertSame(RootState.Locked, model.state())
+        assertNull(presence.beating)
+    }
+
     @Test
     fun `выход возвращает в анонимное состояние`() = runTest(dispatcher) {
         sessions.signIn("uid-1")
@@ -316,6 +392,8 @@ class RootViewModelRepairTest {
     private val logins = FakeLoginRepository()
     private val progress = FakeRegistrationProgress()
     private val presence = FakePresenceInteractor()
+    private val gate = FakeBiometricGate()
+    private var clock = 1_000_000L
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 
@@ -327,7 +405,8 @@ class RootViewModelRepairTest {
         ProfileRepairInteractorImpl(profiles, logins),
         progress,
         presence,
-    )
+        gate,
+    ) { clock }
 
     private fun RootViewModel.state() = observeRootState().value
 

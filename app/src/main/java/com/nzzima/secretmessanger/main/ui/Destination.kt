@@ -11,6 +11,7 @@ import com.nzzima.secretmessanger.utils.constants.Constants
 enum class Destination(val route: String) {
     Loading(Constants.LOADING_ROUTE),
     Auth(Constants.AUTH_ROUTE),
+    Lock(Constants.LOCK_ROUTE),
     Expired(Constants.EXPIRED_ROUTE),
     Repair(Constants.REPAIR_ROUTE),
     Identity(Constants.IDENTITY_ROUTE),
