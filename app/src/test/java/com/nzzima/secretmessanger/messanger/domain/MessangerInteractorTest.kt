@@ -28,6 +28,8 @@ import com.nzzima.secretmessanger.photo.domain.models.PhotoSize
 import com.nzzima.secretmessanger.photo.domain.models.PhotoTooLarge
 import com.nzzima.secretmessanger.voice.domain.models.Recording
 import java.io.File
+import com.nzzima.secretmessanger.chats.domain.models.NotAGroup
+import com.nzzima.secretmessanger.chats.domain.models.OwnerCannotLeave
 import org.junit.Test
 
 /**
@@ -452,5 +454,44 @@ class MessangerInteractorTest {
 
         assertEquals(12.5, voice!!.seconds, 0.001)
         assertEquals("записанное до ротации открывается прежним ключом", 1, voice.keyVersion)
+    }
+
+    @Test
+    fun `выход вычёркивает из состава ровно себя`() = runTest {
+        val group = chat(
+            id = "группа",
+            members = listOf("uid-2", "uid-1", "uid-3"),
+            logins = mapOf("uid-1" to "self", "uid-2" to "второй", "uid-3" to "третий"),
+            selfId = "uid-1",
+            owner = "uid-2",
+        )
+
+        assertTrue(interactor.leave(group).isSuccess)
+
+        assertEquals(listOf("uid-2", "uid-3"), conversations.left.getValue("группа"))
+    }
+
+    @Test
+    fun `создатель из своей группы не выходит`() = runTest {
+        val group = chat(
+            id = "группа",
+            members = listOf("uid-1", "uid-2", "uid-3"),
+            logins = mapOf("uid-1" to "self", "uid-2" to "второй", "uid-3" to "третий"),
+            selfId = "uid-1",
+            owner = "uid-1",
+        )
+
+        val result = interactor.leave(group)
+
+        assertTrue(result.exceptionOrNull() is OwnerCannotLeave)
+        assertTrue("группа осталась бы без того, кто правит состав", conversations.left.isEmpty())
+    }
+
+    @Test
+    fun `из диалога на двоих выходить некуда`() = runTest {
+        val result = interactor.leave(chat())
+
+        assertTrue(result.exceptionOrNull() is NotAGroup)
+        assertTrue(conversations.left.isEmpty())
     }
 }

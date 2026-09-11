@@ -111,6 +111,13 @@ class ConversationRepositoryImpl(private val firestore: FirebaseFirestore) : Con
         batch.commit().await()
     }
 
+    override suspend fun leave(convoId: String, uid: String, members: List<String>): Result<Unit> = runCatching {
+        firestore.collection(Constants.CONVERSATION_COLLECTION)
+            .document(convoId)
+            .set(mapOf(Constants.USERS_FIELD to members - uid), SetOptions.merge())
+            .await()
+    }
+
     override suspend fun create(chat: Chat): Result<Unit> = runCatching {
         firestore.collection(Constants.CONVERSATION_COLLECTION)
             .document(chat.id)

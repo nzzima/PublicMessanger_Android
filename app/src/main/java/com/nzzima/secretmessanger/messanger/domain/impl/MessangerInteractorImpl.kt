@@ -3,6 +3,8 @@ package com.nzzima.secretmessanger.messanger.domain.impl
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.Moment
+import com.nzzima.secretmessanger.chats.domain.models.NotAGroup
+import com.nzzima.secretmessanger.chats.domain.models.OwnerCannotLeave
 import com.nzzima.secretmessanger.chats.domain.openText
 import com.nzzima.secretmessanger.chats.domain.sealText
 import com.nzzima.secretmessanger.crypto.domain.api.ConversationKeys
@@ -128,6 +130,13 @@ class MessangerInteractorImpl(
         ),
         preview = preview,
     )
+
+    override suspend fun leave(chat: Chat): Result<Unit> {
+        if (!chat.isGroup) return Result.failure(NotAGroup())
+        if (chat.owner == chat.selfId) return Result.failure(OwnerCannotLeave())
+
+        return conversations.leave(chat.id, chat.selfId, chat.members)
+    }
 
     override suspend fun markRead(chat: Chat, upTo: Moment): Result<Unit> {
         // Отметка только растёт: повторная запись того же разбудила бы слушателя шапки у

@@ -101,6 +101,19 @@ class FakeConversationRepository(
         return Result.success(Unit)
     }
 
+    /** Составы, оставшиеся после выхода: диалог → кто в нём остался. */
+    val left = mutableMapOf<String, List<String>>()
+
+    /** Чем отказывает выход; `null` — проходит. */
+    var leaveFails: Throwable? = null
+
+    override suspend fun leave(convoId: String, uid: String, members: List<String>): Result<Unit> {
+        leaveFails?.let { return Result.failure(it) }
+
+        left[convoId] = members - uid
+        return Result.success(Unit)
+    }
+
     override suspend fun create(chat: Chat): Result<Unit> {
         createFails?.let { return Result.failure(it) }
 
@@ -123,11 +136,12 @@ fun chat(
     convoKeys: Map<String, String> = emptyMap(),
     keyVersion: Int = 1,
     readUpTo: Map<String, Moment> = emptyMap(),
+    owner: String = selfId,
 ) = Chat(
     id = id,
     members = members,
     logins = logins,
-    owner = selfId,
+    owner = owner,
     selfId = selfId,
     convoKeys = convoKeys,
     keyVersion = keyVersion,

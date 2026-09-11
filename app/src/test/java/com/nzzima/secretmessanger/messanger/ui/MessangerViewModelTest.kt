@@ -98,6 +98,33 @@ class MessangerViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
     }
 
+    /** Открытая группа, в которой мы не создатель: из неё можно выйти. */
+    private fun groupOpened(): MessangerViewModel {
+        conversations.sendChat(
+            chat(
+                id = "группа",
+                members = listOf("uid-1", "uid-2", "uid-3"),
+                logins = mapOf("uid-1" to "self", "uid-2" to "второй", "uid-3" to "третий"),
+                owner = "uid-2",
+            ),
+        )
+        messages.send(listOf(message(body = "привет")))
+
+        return MessangerViewModel(
+            "группа",
+            SessionInteractorImpl(sessions, sessions, sessions),
+            MessangerInteractorImpl(conversations, messages, noKeys, photos, voices),
+            profiles,
+            avatars,
+            photos,
+            places,
+            presence,
+            voices,
+            recorder,
+            player,
+        ).also { dispatcher.scheduler.advanceUntilIdle() }
+    }
+
     private fun MessangerViewModel.state() = observeMessangerScreenState().value
 
     private fun MessangerViewModel.content() = state() as MessangerUiState.Content
@@ -600,5 +627,85 @@ class MessangerViewModelTest {
 
         assertNull(model.content().playing)
         assertEquals(Constants.UNREADABLE, model.content().error)
+    }
+
+    @Test
+    fun `выход предлагается только в группе и только не создателю`() = runTest(dispatcher) {
+        val model = opened()
+
+        assertFalse("из диалога на двоих выходить некуда", model.content().canLeave)
+
+        conversations.sendChat(
+            chat(
+                members = listOf("uid-1", "uid-2", "uid-3"),
+                logins = mapOf("uid-1" to "self", "uid-2" to "второй", "uid-3" to "третий"),
+                owner = "uid-2",
+            ),
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(model.content().canLeave)
+    }
+
+    @Test
+    fun `создателю выход не предлагается`() = runTest(dispatcher) {
+        conversations.sendChat(
+            chat(
+                members = listOf("uid-1", "uid-2", "uid-3"),
+                logins = mapOf("uid-1" to "self", "uid-2" to "второй", "uid-3" to "третий"),
+                owner = "uid-1",
+            ),
+        )
+        messages.send(listOf(message(body = "привет")))
+        val model = viewModel().also { dispatcher.scheduler.advanceUntilIdle() }
+
+        assertFalse(model.content().canLeave)
+    }
+
+    @Test
+    fun `выход спрашивает подтверждение, а не уходит молча`() = runTest(dispatcher) {
+        val model = groupOpened()
+
+        model.onLeaveAsked()
+
+        assertTrue(model.content().askingLeave)
+        assertTrue("до подтверждения ничего не записано", conversations.left.isEmpty())
+    }
+
+    @Test
+    fun `подтверждённый выход вычёркивает и уводит с экрана`() = runTest(dispatcher) {
+        val model = groupOpened()
+
+        model.onLeaveAsked()
+        model.onLeaveConfirmed()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf("uid-2", "uid-3"), conversations.left.getValue("группа"))
+        assertTrue(model.content().left)
+    }
+
+    @Test
+    fun `неудавшийся выход оставляет в группе и показывает причину`() = runTest(dispatcher) {
+        val model = groupOpened()
+        conversations.leaveFails = IllegalStateException("нет связи")
+
+        model.onLeaveAsked()
+        model.onLeaveConfirmed()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("нет связи", model.content().error)
+        assertFalse("человек остался в группе — экран обязан остаться тоже", model.content().left)
+    }
+
+    @Test
+    fun `передумавший остаётся`() = runTest(dispatcher) {
+        val model = groupOpened()
+
+        model.onLeaveAsked()
+        model.onLeaveDismissed()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(model.content().askingLeave)
+        assertTrue(conversations.left.isEmpty())
     }
 }

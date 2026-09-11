@@ -349,6 +349,45 @@ class MessangerViewModel(
             if (current is MessangerUiState.Content) change(current) else current
         }
 
+    /** Спрашивает подтверждение выхода: уйти из группы молча по одному нажатию нельзя. */
+    fun onLeaveAsked() = update { it.copy(askingLeave = true) }
+
+    /** Передумали выходить. */
+    fun onLeaveDismissed() = update { it.copy(askingLeave = false) }
+
+    /**
+     * Выходит из группы.
+     *
+     * Подписки снимаются **до** записи: сразу после неё доступ к диалогу пропадает вместе с
+     * членством, и слушатели получили бы отказ по правам — вышедший увидел бы собственный
+     * уход как поломку. На iOS ту же беду лечат отметкой «мы уходим», которую проверяет
+     * обработчик отказа; здесь проще не создавать отказ вовсе.
+     *
+     * Не прошло — подписываемся заново: человек остался в группе, и показывать её надо как
+     * прежде.
+     */
+    fun onLeaveConfirmed() {
+        val chat = chat ?: return
+
+        update { it.copy(askingLeave = false, isSending = true, error = null) }
+
+        subscription?.cancel()
+        presence?.cancel()
+
+        viewModelScope.launch {
+            messangerInteractor.leave(chat)
+                .onSuccess { update { it.copy(isSending = false, left = true) } }
+                .onFailure { error ->
+                    update {
+                        it.copy(isSending = false, error = error.message ?: Constants.SERVER_SILENT)
+                    }
+                    // Переподписка молча: обычная сбрасывает экран в ожидание, а вместе с
+                    // ним стёрлась бы и причина, ради которой человек здесь остался.
+                    subscribe(keepShown = true)
+                }
+        }
+    }
+
     /**
      * Отмечает прочтение по последней чужой реплике.
      *
@@ -392,7 +431,14 @@ class MessangerViewModel(
         }
     }
 
-    private fun subscribe() {
+    /**
+     * Подписывается на переписку.
+     *
+     * @param keepShown оставить показанное вместо ожидания. Нужно там, где подписка
+     *   восстанавливается после неудачи: сброс в ожидание стёр бы и причину, ради которой
+     *   человек на этом экране остался.
+     */
+    private fun subscribe(keepShown: Boolean = false) {
         val uid = sessionInteractor.observeSession().value.uidOrNull ?: return
 
         subscription?.cancel()
@@ -400,7 +446,8 @@ class MessangerViewModel(
         playback?.cancel()
         playback = null
         presence = null
-        messangerScreenState.value = MessangerUiState.Loading
+
+        if (!keepShown) messangerScreenState.value = MessangerUiState.Loading
         // Подписка начинается с пустого состояния, поэтому и спрошенных помним заново.
         askedMembers.clear()
         askedPhotos.clear()
@@ -419,7 +466,7 @@ class MessangerViewModel(
                                 current.copy(title = dialogue.chat.title, replies = dialogue.replies)
                             } else {
                                 MessangerUiState.Content(dialogue.chat.title, dialogue.replies)
-                            }
+                            }.copy(canLeave = dialogue.chat.isGroup && dialogue.chat.owner != dialogue.chat.selfId)
                         }
                         loadAvatars(dialogue.chat)
                         loadPhotos(dialogue)

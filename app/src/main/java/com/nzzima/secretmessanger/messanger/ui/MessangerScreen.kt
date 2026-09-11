@@ -101,6 +101,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.core.content.ContextCompat
 import com.nzzima.secretmessanger.ui.components.MicIcon
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
 import com.nzzima.secretmessanger.utils.constants.Constants
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -130,6 +133,33 @@ fun MessangerScreen(
 ) {
     val state by viewModel.observeMessangerScreenState().collectAsStateWithLifecycle()
 
+    val content = state as? MessangerUiState.Content
+
+    // Вышли из группы — возвращаемся к списку сразу: диалога у нас больше нет, и показывать
+    // на его месте отказ по правам было бы враньём про поломку.
+    LaunchedEffect(content?.left) {
+        if (content?.left == true) onBack()
+    }
+
+    content?.takeIf { it.askingLeave }?.let {
+        AlertDialog(
+            onDismissRequest = viewModel::onLeaveDismissed,
+            title = { Text(Constants.LEAVE_GROUP_QUESTION) },
+            text = { Text(Constants.LEAVE_GROUP_EXPLANATION) },
+            confirmButton = {
+                TextButton(onClick = viewModel::onLeaveConfirmed) {
+                    Text(Constants.LEAVE_GROUP, color = ErrorColor)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::onLeaveDismissed) {
+                    Text(Constants.CANCEL, color = Accent)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
+    }
+
     // Прочтение отмечается, только пока экран на глазах: подписка переживает и уход в фон, и
     // переход дальше по стеку, а метка обязана означать «человек это видел».
     LifecycleResumeEffect(Unit) {
@@ -143,8 +173,6 @@ fun MessangerScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    val content = state as? MessangerUiState.Content
-
                     // Название и подпись в столбик: подпись присутствия рядом с именем не
                     // встаёт, а шапка у центрированного заголовка одна на обе строки.
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -160,6 +188,15 @@ fun MessangerScreen(
                     }
                 },
                 navigationIcon = { BackButton(backTitle, onBack) },
+                actions = {
+                    // Выход стоит в шапке и только у группы: у диалога на двоих выходить
+                    // некуда, а у создателя — не из чего, правило ему это запрещает.
+                    if (content?.canLeave == true) {
+                        TextButton(onClick = viewModel::onLeaveAsked) {
+                            Text(Constants.LEAVE_GROUP, color = ErrorColor, fontSize = 15.sp)
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,

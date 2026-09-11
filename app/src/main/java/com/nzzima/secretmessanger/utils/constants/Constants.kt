@@ -195,6 +195,12 @@ object Constants {
     const val NOTE_PLACEHOLDER = "Заметка о себе"
     const val GROUP_CHAT = "Группа"
     const val NEW_GROUP = "Новая группа"
+    const val LEAVE_GROUP = "Выйти"
+    const val LEAVE_GROUP_QUESTION = "Выйти из группы?"
+    const val LEAVE_GROUP_EXPLANATION =
+        "Вы перестанете видеть её переписку. Вернуть вас сможет только создатель."
+    const val OWNER_CANNOT_LEAVE = "Создатель из своей группы не выходит"
+    const val NOT_A_GROUP = "Выйти можно только из группы"
     const val NEW_GROUP_TITLE = "Новая группа"
     const val NEW_GROUP_HINT = "Отметьте двоих или больше: с одним это обычный диалог"
     const val CREATE_GROUP = "Создать"

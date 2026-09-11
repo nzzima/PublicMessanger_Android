@@ -91,4 +91,15 @@ interface ConversationRepository {
      * отдельных запросов незачем.
      */
     suspend fun renameInConversations(uid: String, login: String): Result<Unit>
+
+    /**
+     * Вычёркивает [uid] из состава диалога [convoId], оставляя [members] без него.
+     *
+     * Единственная запись состава, которую делает **не создатель**, и правило под неё
+     * отдельное: вычеркнуть разрешено ровно себя, а владельцу выход закрыт вовсе — группа
+     * осталась бы без того, кто правит состав.
+     *
+     * Ключи, создатель и метки прочтения при этом не трогаются: правило сверяет и их.
+     */
+    suspend fun leave(convoId: String, uid: String, members: List<String>): Result<Unit>
 }

@@ -19,6 +19,9 @@ sealed interface MessangerUiState {
      * @property photos байты снимков по идентификатору реплики; чего в карте нет — то ещё
      *   грузится либо не открылось: ключа нужной версии у нас нет.
      * @property opened снимок, раскрытый на весь экран; `null` — лента как обычно.
+     * @property canLeave можно ли выйти: группа и мы в ней не создатель.
+     * @property askingLeave показан вопрос «выйти из группы?».
+     * @property left вышли — поручение экрану вернуться к списку диалогов.
      * @property presence подпись под названием: когда собеседника видели в последний раз.
      *   `null` у группы — там собеседник не один, и присутствие одного из них ни о чём.
      * @property recordingLeft сколько секунд записи осталось; `null` — запись не идёт. Счёт
@@ -36,6 +39,9 @@ sealed interface MessangerUiState {
         val photos: Map<String, ByteArray> = emptyMap(),
         val opened: ByteArray? = null,
         val presence: String? = null,
+        val canLeave: Boolean = false,
+        val askingLeave: Boolean = false,
+        val left: Boolean = false,
         val recordingLeft: Int? = null,
         val playing: String? = null,
         val progress: Float = 0f,
