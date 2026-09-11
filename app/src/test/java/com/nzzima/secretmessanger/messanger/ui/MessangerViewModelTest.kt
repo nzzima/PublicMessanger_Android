@@ -8,6 +8,8 @@ import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.crypto.domain.FakeConversationKeys
 import com.nzzima.secretmessanger.messanger.domain.FakeLocationSource
 import com.nzzima.secretmessanger.messanger.domain.FakePhotoInteractor
+import com.nzzima.secretmessanger.presence.domain.FakePresenceInteractor
+import com.nzzima.secretmessanger.presence.domain.models.Presence
 import com.nzzima.secretmessanger.profile.domain.FakeCompanionProfiles
 import com.nzzima.secretmessanger.crypto.domain.models.CryptoFailure
 import com.nzzima.secretmessanger.messanger.domain.FakeMessageRepository
@@ -50,6 +52,7 @@ class MessangerViewModelTest {
     private val profiles = FakeCompanionProfiles()
     private val photos = FakePhotoInteractor()
     private val places = FakeLocationSource()
+    private val presence = FakePresenceInteractor()
     private val avatars = FakeAvatarInteractor(image = byteArrayOf(1, 2, 3))
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
@@ -64,6 +67,7 @@ class MessangerViewModelTest {
         avatars,
         photos,
         places,
+        presence,
     )
 
     /** Та же модель, но телефон места не знает: геолокация выключена или приёмник молчит. */
@@ -75,6 +79,7 @@ class MessangerViewModelTest {
         avatars,
         photos,
         FakeLocationSource(place = null),
+        presence,
     ).also {
         conversations.sendChat(chat())
         messages.send(listOf(message(body = "привет")))
@@ -436,5 +441,29 @@ class MessangerViewModelTest {
         model.onPhotoClosed()
         assertNull(model.content().opened)
     }
-}
 
+    @Test
+    fun `подпись присутствия приходит в шапку диалога на двоих`() = runTest(dispatcher) {
+        val model = opened()
+        presence.presence(Presence(System.currentTimeMillis()))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf("uid-2"), presence.watched)
+        assertEquals(Constants.ONLINE, model.content().presence)
+    }
+
+    @Test
+    fun `у группы присутствие не спрашивается вовсе`() = runTest(dispatcher) {
+        conversations.sendChat(
+            chat(
+                members = listOf("uid-1", "uid-2", "uid-3"),
+                logins = mapOf("uid-1" to "self", "uid-2" to "второй", "uid-3" to "третий"),
+            ),
+        )
+        messages.send(listOf(message(body = "привет")))
+        val model = viewModel().also { dispatcher.scheduler.advanceUntilIdle() }
+
+        assertTrue("присутствие одного из нескольких ни о чём не говорит", presence.watched.isEmpty())
+        assertNull(model.content().presence)
+    }
+}

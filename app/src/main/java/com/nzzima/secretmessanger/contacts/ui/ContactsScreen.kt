@@ -97,6 +97,7 @@ private fun ContactList(state: ContactsUiState.Content, onOpen: (Contact) -> Uni
                     image = state.avatars[contact.id],
                     size = ROW_AVATAR,
                     modifier = Modifier.padding(end = AVATAR_GAP),
+                    online = contact.id in state.online,
                 )
 
                 Text(

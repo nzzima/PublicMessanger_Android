@@ -10,6 +10,7 @@ import com.nzzima.secretmessanger.messanger.domain.api.LocationSource
 import com.nzzima.secretmessanger.messanger.domain.api.MessangerInteractor
 import com.nzzima.secretmessanger.messanger.domain.models.Dialogue
 import com.nzzima.secretmessanger.photo.domain.api.PhotoInteractor
+import com.nzzima.secretmessanger.presence.domain.api.PresenceInteractor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -40,6 +41,7 @@ class MessangerViewModel(
     private val avatarInteractor: AvatarInteractor,
     private val photoInteractor: PhotoInteractor,
     private val locationSource: LocationSource,
+    private val presenceInteractor: PresenceInteractor,
 ) : ViewModel() {
 
     private val messangerScreenState = MutableStateFlow<MessangerUiState>(MessangerUiState.Loading)
@@ -50,6 +52,9 @@ class MessangerViewModel(
 
     /** Реплики, снимки которых уже заказывали, — включая те, что не открылись. */
     private val askedPhotos = mutableSetOf<String>()
+
+    /** Подписка на присутствие собеседника; у группы её нет. */
+    private var presence: Job? = null
 
     /**
      * Шапка последнего снимка — ею запечатывается отправляемое.
@@ -192,6 +197,27 @@ class MessangerViewModel(
      * документе, поэтому второй раз спрашивать его незачем, а лента перечитывается на каждую
      * реплику.
      */
+    /**
+     * Следит за присутствием собеседника — один раз за подписку.
+     *
+     * У группы не заводится вовсе: присутствие одного участника из нескольких в шапке ничего
+     * не значит, а выбирать из них одного было бы враньём — как и с аватаром группы.
+     */
+    private fun watchPresence(chat: Chat) {
+        val companion = chat.companionId ?: return
+        if (presence?.isActive == true) return
+
+        presence = viewModelScope.launch {
+            presenceInteractor.observePresence(companion).collect { seen ->
+                val text = seen?.text(System.currentTimeMillis())
+
+                messangerScreenState.update { current ->
+                    if (current is MessangerUiState.Content) current.copy(presence = text) else current
+                }
+            }
+        }
+    }
+
     private fun loadPhotos(dialogue: Dialogue) {
         val pending = dialogue.replies.filter { it.photo != null && askedPhotos.add(it.id) }
         if (pending.isEmpty()) return
@@ -259,6 +285,8 @@ class MessangerViewModel(
         val uid = sessionInteractor.observeSession().value.uidOrNull ?: return
 
         subscription?.cancel()
+        presence?.cancel()
+        presence = null
         messangerScreenState.value = MessangerUiState.Loading
         // Подписка начинается с пустого состояния, поэтому и спрошенных помним заново.
         askedMembers.clear()
@@ -282,6 +310,7 @@ class MessangerViewModel(
                         }
                         loadAvatars(dialogue.chat)
                         loadPhotos(dialogue)
+                        watchPresence(dialogue.chat)
                     }
                     .onFailure { error ->
                         val gone = error is ConversationGone

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
+import com.nzzima.secretmessanger.presence.domain.api.PresenceInteractor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -31,6 +32,7 @@ class UserProfileViewModel(
     private val profileInteractor: ProfileInteractor,
     private val conversationStarter: ConversationStarter,
     private val avatarInteractor: AvatarInteractor,
+    private val presenceInteractor: PresenceInteractor,
 ) : ViewModel() {
 
     private val userProfileScreenState =
@@ -92,6 +94,24 @@ class UserProfileViewModel(
         if (current is UserProfileUiState.Content) current.copy(opened = null) else current
     }
 
+    /**
+     * Подпись присутствия под именем.
+     *
+     * Текст собирается здесь, а не в разметке: «в сети 5 минут назад» стареет со временем, и
+     * интерактор повторяет значение по тику — пересчитывать его надо на каждое повторение.
+     */
+    private fun watchPresence(uid: String) {
+        viewModelScope.launch {
+            presenceInteractor.observePresence(uid).collect { presence ->
+                val text = presence?.text(System.currentTimeMillis())
+
+                userProfileScreenState.update { current ->
+                    if (current is UserProfileUiState.Content) current.copy(presence = text) else current
+                }
+            }
+        }
+    }
+
     /** Догружает аватар собеседника; сменившийся приедет с новой версией. */
     private fun loadAvatar(uid: String, version: Int) {
         viewModelScope.launch {
@@ -104,6 +124,7 @@ class UserProfileViewModel(
     }
 
     private fun subscribe() {
+        watchPresence(companionId)
         subscription?.cancel()
         userProfileScreenState.value = UserProfileUiState.Loading(fallbackLogin)
 

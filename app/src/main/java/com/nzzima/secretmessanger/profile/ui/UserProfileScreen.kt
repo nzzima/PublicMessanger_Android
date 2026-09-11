@@ -115,7 +115,7 @@ fun UserProfileScreen(
                 is UserProfileUiState.Loading -> LoadingBody(current.name)
 
                 is UserProfileUiState.Content ->
-                    UserProfileBody(current.profile, current.avatar, current.error)
+                    UserProfileBody(current.profile, current.avatar, current.presence, current.error)
 
                 is UserProfileUiState.Failed -> FailureNotice(current.message, viewModel::retry)
             }
@@ -136,7 +136,7 @@ private fun LoadingBody(name: String) {
 }
 
 @Composable
-private fun UserProfileBody(profile: Profile, avatar: ByteArray?, error: String?) {
+private fun UserProfileBody(profile: Profile, avatar: ByteArray?, presence: String?, error: String?) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -149,6 +149,12 @@ private fun UserProfileBody(profile: Profile, avatar: ByteArray?, error: String?
         )
 
         PersonName(profile.name.ifEmpty { profile.login })
+
+        // Подпись стоит под именем, а не рядом с кружком: «в сети вчера в 21:14» в строку с
+        // именем не встаёт, а переносить имя ради неё — хуже.
+        presence?.let {
+            Text(text = it, color = InkDim, fontSize = 13.sp)
+        }
 
         Column(
             modifier = Modifier.fillMaxWidth().padding(top = 32.dp),

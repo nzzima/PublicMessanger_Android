@@ -134,11 +134,21 @@ fun MessangerScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        text = (state as? MessangerUiState.Content)?.title.orEmpty(),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    val content = state as? MessangerUiState.Content
+
+                    // Название и подпись в столбик: подпись присутствия рядом с именем не
+                    // встаёт, а шапка у центрированного заголовка одна на обе строки.
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = content?.title.orEmpty(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+
+                        content?.presence?.let {
+                            Text(text = it, color = InkDim, fontSize = 12.sp, maxLines = 1)
+                        }
+                    }
                 },
                 navigationIcon = { BackButton(backTitle, onBack) },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(

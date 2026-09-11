@@ -19,6 +19,8 @@ sealed interface MessangerUiState {
      * @property photos байты снимков по идентификатору реплики; чего в карте нет — то ещё
      *   грузится либо не открылось: ключа нужной версии у нас нет.
      * @property opened снимок, раскрытый на весь экран; `null` — лента как обычно.
+     * @property presence подпись под названием: когда собеседника видели в последний раз.
+     *   `null` у группы — там собеседник не один, и присутствие одного из них ни о чём.
      * @property draft набранный, но не отправленный текст. Переживает отказ отправки:
      *   очищается только после успешной записи.
      * @property error причина, по которой отправка не прошла.
@@ -29,6 +31,7 @@ sealed interface MessangerUiState {
         val avatars: Map<String, ByteArray> = emptyMap(),
         val photos: Map<String, ByteArray> = emptyMap(),
         val opened: ByteArray? = null,
+        val presence: String? = null,
         val draft: String = "",
         val isSending: Boolean = false,
         val error: String? = null,

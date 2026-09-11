@@ -18,6 +18,7 @@ import com.nzzima.secretmessanger.auth.ui.RepairProfileScreen
 import com.nzzima.secretmessanger.crypto.ui.IdentityScreen
 import com.nzzima.secretmessanger.session.ui.SessionExpiredScreen
 import com.nzzima.secretmessanger.utils.constants.Constants
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -38,6 +39,14 @@ fun AppNavHost(
     viewModel: RootViewModel = koinViewModel(),
 ) {
     val state by viewModel.observeRootState().collectAsStateWithLifecycle()
+
+    // Присутствие держится, пока приложение на глазах: свёрнутое отмечаться перестаёт, и
+    // человек гаснет у собеседников сам, без команды «я ушёл», — её свёрнутое приложение и
+    // не успело бы отправить.
+    LifecycleResumeEffect(Unit) {
+        viewModel.onVisible()
+        onPauseOrDispose { viewModel.onHidden() }
+    }
 
     val target = when (state) {
         RootState.Anonymous -> Destination.Auth

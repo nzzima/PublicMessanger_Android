@@ -28,6 +28,8 @@ import com.nzzima.secretmessanger.photo.data.impl.PhotoEncoderImpl
 import com.nzzima.secretmessanger.photo.data.impl.PhotoRepositoryImpl
 import com.nzzima.secretmessanger.photo.domain.api.PhotoEncoder
 import com.nzzima.secretmessanger.photo.domain.api.PhotoRepository
+import com.nzzima.secretmessanger.presence.data.impl.PresenceRepositoryImpl
+import com.nzzima.secretmessanger.presence.domain.api.PresenceRepository
 import com.nzzima.secretmessanger.profile.data.impl.ProfileReaderImpl
 import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.session.data.impl.SessionRepositoryImpl
@@ -96,6 +98,10 @@ val repositoryModule = module {
 
     single<LocationSource> {
         LocationSourceImpl(androidContext())
+    }
+
+    single<PresenceRepository> {
+        PresenceRepositoryImpl(get())
     }
 
     single<MessageRepository> {

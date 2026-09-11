@@ -2,6 +2,7 @@ package com.nzzima.secretmessanger.profile.ui
 
 import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
+import com.nzzima.secretmessanger.presence.domain.FakePresenceInteractor
 import com.nzzima.secretmessanger.profile.domain.FakeProfileReader
 import com.nzzima.secretmessanger.profile.domain.impl.ProfileInteractorImpl
 import com.nzzima.secretmessanger.profile.domain.models.Profile
@@ -28,6 +29,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class UserProfileViewModelTest {
 
+    private val presence = FakePresenceInteractor()
+
     private val dispatcher = StandardTestDispatcher()
     private val sessions = FakeSessionRepository(Session.Authenticated("uid-1"))
     private val profiles = FakeProfileReader()
@@ -44,6 +47,7 @@ class UserProfileViewModelTest {
         ProfileInteractorImpl(profiles),
         starter,
         FakeAvatarInteractor(),
+        presence,
     )
 
     private fun UserProfileViewModel.state() = observeUserProfileScreenState().value

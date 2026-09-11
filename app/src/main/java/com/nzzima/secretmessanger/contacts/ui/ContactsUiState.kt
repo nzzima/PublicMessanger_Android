@@ -16,10 +16,13 @@ sealed interface ContactsUiState {
      *
      * @property avatars байты аватаров по идентификатору аккаунта; кого в карте нет — тот
      *   ещё не загрузился либо аватара не имеет.
+     * @property online кто сейчас в сети. Пересчитывается сам по тику присутствия, поэтому
+     *   точка гаснет без новых снимков — по одному лишь молчанию.
      */
     data class Content(
         val contacts: List<Contact>,
         val avatars: Map<String, ByteArray> = emptyMap(),
+        val online: Set<String> = emptySet(),
     ) : ContactsUiState
 
     /** Подписка отказала. [message] показывается на экране, подписаться можно заново. */

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
 import com.nzzima.secretmessanger.contacts.domain.models.Contact
+import com.nzzima.secretmessanger.presence.domain.api.PresenceInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
 import kotlinx.coroutines.Job
@@ -24,6 +25,7 @@ class ContactsViewModel(
     private val sessionInteractor: SessionInteractor,
     private val contactsInteractor: ContactsInteractor,
     private val avatarInteractor: AvatarInteractor,
+    private val presenceInteractor: PresenceInteractor,
 ) : ViewModel() {
 
     private val contactsScreenState = MutableStateFlow<ContactsUiState>(ContactsUiState.Loading)
@@ -34,6 +36,17 @@ class ContactsViewModel(
 
     init {
         subscribe()
+
+        // Присутствие — своя подписка, а не часть снимка контактов: список профилей меняется
+        // редко, а пульс бьётся у каждого раз в полминуты, и складывать их в один поток
+        // значило бы перечитывать контакты по тику.
+        viewModelScope.launch {
+            presenceInteractor.observeOnline().collect { online ->
+                contactsScreenState.update { current ->
+                    if (current is ContactsUiState.Content) current.copy(online = online) else current
+                }
+            }
+        }
     }
 
     /** Подписывается на список заново — нужна после отказа. */

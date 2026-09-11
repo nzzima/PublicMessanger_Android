@@ -5,6 +5,7 @@ import com.nzzima.secretmessanger.auth.domain.FakeProfileRepository
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationProgress
 import com.nzzima.secretmessanger.auth.domain.impl.ProfileRepairInteractorImpl
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityInteractor
+import com.nzzima.secretmessanger.presence.domain.FakePresenceInteractor
 import com.nzzima.secretmessanger.crypto.domain.models.IdentityState
 import com.nzzima.secretmessanger.session.domain.FakeSessionRepository
 import com.nzzima.secretmessanger.session.domain.impl.SessionInteractorImpl
@@ -24,6 +25,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -41,6 +43,7 @@ class RootViewModelTest {
     private var profiles = FakeProfileRepository(mutableSetOf("uid-1"))
     private var logins = FakeLoginRepository()
     private val progress = FakeRegistrationProgress()
+    private val presence = FakePresenceInteractor()
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 
@@ -51,6 +54,7 @@ class RootViewModelTest {
         identity,
         ProfileRepairInteractorImpl(profiles, logins),
         progress,
+        presence,
     )
 
     private fun RootViewModel.state() = observeRootState().value
@@ -187,6 +191,58 @@ class RootViewModelTest {
         assertSame(RootState.Anonymous, model.state())
     }
 
+
+    @Test
+    fun `пульс бьётся, пока экран виден и вход пройден`() = runTest(dispatcher) {
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("uid-1", presence.beating)
+    }
+
+    @Test
+    fun `до развилки ключа человек не числится в сети`() = runTest(dispatcher) {
+        identity.state = IdentityState.NeedsConfirmation
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertNull("отмечаться, ещё не войдя, — значит врать", presence.beating)
+    }
+
+    @Test
+    fun `уход с экрана прекращает пульс`() = runTest(dispatcher) {
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        model.onHidden()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(presence.beating)
+    }
+
+    @Test
+    fun `выход из аккаунта прекращает пульс`() = runTest(dispatcher) {
+        sessions.signIn("uid-1")
+        val model = viewModel()
+        model.onVisible()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        model.signOut()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(presence.beating)
+    }
+
     @Test
     fun `выход возвращает в анонимное состояние`() = runTest(dispatcher) {
         sessions.signIn("uid-1")
@@ -259,6 +315,7 @@ class RootViewModelRepairTest {
     private val profiles = FakeProfileRepository()
     private val logins = FakeLoginRepository()
     private val progress = FakeRegistrationProgress()
+    private val presence = FakePresenceInteractor()
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 
@@ -269,6 +326,7 @@ class RootViewModelRepairTest {
         identity,
         ProfileRepairInteractorImpl(profiles, logins),
         progress,
+        presence,
     )
 
     private fun RootViewModel.state() = observeRootState().value

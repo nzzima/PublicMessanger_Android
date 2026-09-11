@@ -6,6 +6,7 @@ import com.nzzima.secretmessanger.auth.domain.api.ProfileRepairInteractor
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationProgress
 import com.nzzima.secretmessanger.crypto.domain.api.IdentityInteractor
 import com.nzzima.secretmessanger.crypto.domain.models.IdentityState
+import com.nzzima.secretmessanger.presence.domain.api.PresenceInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.session.domain.models.Session
 import com.nzzima.secretmessanger.session.domain.models.SessionFailure
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
@@ -42,14 +45,40 @@ class RootViewModel(
     private val identityInteractor: IdentityInteractor,
     private val profileRepairInteractor: ProfileRepairInteractor,
     private val registrationProgress: RegistrationProgress,
+    private val presenceInteractor: PresenceInteractor,
 ) : ViewModel() {
 
     private val rootState = MutableStateFlow<RootState>(RootState.Checking)
 
+    /** Виден ли экран: пульс бьётся, только пока приложение на глазах. */
+    private val visible = MutableStateFlow(false)
+
     /** Текущее состояние оболочки. */
     fun observeRootState(): StateFlow<RootState> = rootState.asStateFlow()
 
+    /** Экран показался: с этого мига человек числится в сети. */
+    fun onVisible() {
+        visible.value = true
+    }
+
+    /** Экран ушёл с глаз — пульс прекращается, и человек гаснет сам через окно присутствия. */
+    fun onHidden() {
+        visible.value = false
+    }
+
     init {
+        // Пульс бьётся, пока выполняются оба условия: экран на глазах и вход пройден целиком.
+        // Отмечаться раньше развилки ключа значило бы числиться в сети, ещё не войдя.
+        viewModelScope.launch {
+            combine(rootState, visible) { state, seen -> seen && state == RootState.Ready }
+                .distinctUntilChanged()
+                .collectLatest { beating ->
+                    val uid = uidOrNull()
+
+                    if (beating && uid != null) presenceInteractor.keepAlive(uid)
+                }
+        }
+
         viewModelScope.launch {
             // collectLatest, а не collect: смена сессии обрывает незаконченную проверку.
             // Проигранная гонка за логин удаляет только что созданный аккаунт, и проверка по

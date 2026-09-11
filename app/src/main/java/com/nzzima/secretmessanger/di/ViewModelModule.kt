@@ -28,7 +28,7 @@ val viewModelModule = module {
     }
 
     viewModel {
-        ContactsViewModel(get(), get(), get())
+        ContactsViewModel(get(), get(), get(), get())
     }
 
     viewModel {
@@ -40,14 +40,14 @@ val viewModelModule = module {
     }
 
     viewModel { (convoId: String) ->
-        MessangerViewModel(convoId, get(), get(), get(), get(), get(), get())
+        MessangerViewModel(convoId, get(), get(), get(), get(), get(), get(), get())
     }
 
     viewModel { (userId: String, login: String) ->
-        UserProfileViewModel(userId, login, get(), get(), get(), get())
+        UserProfileViewModel(userId, login, get(), get(), get(), get(), get())
     }
 
     viewModel {
-        RootViewModel(get(), get(), get(), get())
+        RootViewModel(get(), get(), get(), get(), get())
     }
 }

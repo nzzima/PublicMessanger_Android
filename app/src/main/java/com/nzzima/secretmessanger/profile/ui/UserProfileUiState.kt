@@ -29,6 +29,7 @@ sealed interface UserProfileUiState {
         override val name: String,
         val profile: Profile,
         val avatar: ByteArray? = null,
+        val presence: String? = null,
         val isOpening: Boolean = false,
         val opened: String? = null,
         val error: String? = null,

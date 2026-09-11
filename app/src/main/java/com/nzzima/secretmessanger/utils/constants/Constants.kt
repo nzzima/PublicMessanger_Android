@@ -15,6 +15,7 @@ object Constants {
     const val MESSAGES_COLLECTION = "messages"
     const val AVATARS_COLLECTION = "avatars"
     const val IMAGES_COLLECTION = "images"
+    const val PRESENCE_COLLECTION = "presence"
 
     const val UID_FIELD = "uid"
     const val LOGIN_FIELD = "login"
@@ -34,6 +35,7 @@ object Constants {
     const val READ_UP_TO_FIELD = "readUpTo"
 
     const val IMAGE_DATA_FIELD = "data"
+    const val LAST_SEEN_FIELD = "lastSeen"
     const val WIDTH_FIELD = "width"
     const val HEIGHT_FIELD = "height"
 
@@ -82,6 +84,18 @@ object Constants {
     const val MESSAGE_WINDOW = 50L
 
     const val FIRST_KEY_VERSION = 1
+
+    /** Как часто приложение отмечается, пока оно на экране. */
+    const val PRESENCE_HEARTBEAT_MS = 30_000L
+
+    /**
+     * Сколько человек ещё считается сетевым после последнего удара пульса.
+     *
+     * Больше двух ударов, а не одного: пропущенный удар — обычное дело в метро и в лифте, и
+     * с окном в один удар собеседник мигал бы серым на ровном месте. Плата честная — ушедший
+     * ещё минуту числится в сети.
+     */
+    const val PRESENCE_WINDOW_MS = 70_000L
 
     /** Срок ожидания точки: дольше человек уже не ждёт, а GPS в помещении молчит вечно. */
     const val LOCATION_TIMEOUT_MS = 8_000L
@@ -155,6 +169,7 @@ object Constants {
     const val SAVE = "Сохранить"
     const val NOTE_PLACEHOLDER = "Заметка о себе"
     const val GROUP_CHAT = "Группа"
+    const val ONLINE = "в сети"
     const val ATTACH = "Прикрепить"
     const val ATTACH_PHOTO = "Фото"
     const val ATTACH_LOCATION = "Геопозиция"

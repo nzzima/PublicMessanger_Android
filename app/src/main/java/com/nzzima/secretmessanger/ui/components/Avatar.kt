@@ -19,6 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.padding
+import com.nzzima.secretmessanger.ui.theme.BgMain
+import com.nzzima.secretmessanger.ui.theme.Online
 import com.nzzima.secretmessanger.ui.theme.InkDim
 import com.nzzima.secretmessanger.utils.constants.Constants
 import com.nzzima.secretmessanger.ui.theme.Raised
@@ -33,17 +36,47 @@ import com.nzzima.secretmessanger.ui.theme.Raised
  * но делать это на каждую перерисовку списка незачем.
  *
  * @param image байты JPEG либо `null` — аватара нет или он ещё не загрузился.
+ * @param online зажигать ли точку присутствия в углу кружка.
  */
 @Composable
-fun Avatar(name: String, image: ByteArray?, size: Dp, modifier: Modifier = Modifier) {
+fun Avatar(
+    name: String,
+    image: ByteArray?,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    online: Boolean = false,
+) {
     val bitmap = remember(image) {
         image?.let { bytes ->
             runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
         }
     }
 
+    Box(modifier = modifier.size(size)) {
+        Face(name, bitmap, size)
+
+        if (online) {
+            // Точка с ободком цвета экрана: без него на светлой фотографии она сливалась бы
+            // с ней, а на тёмной — с кружком.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(size * DOT_SHARE)
+                    .clip(CircleShape)
+                    .background(BgMain)
+                    .padding(size * DOT_RING)
+                    .clip(CircleShape)
+                    .background(Online),
+            )
+        }
+    }
+}
+
+/** Сам кружок: фотография либо буква имени. */
+@Composable
+private fun Face(name: String, bitmap: android.graphics.Bitmap?, size: Dp) {
     Box(
-        modifier = modifier.size(size).clip(CircleShape).background(Raised),
+        modifier = Modifier.size(size).clip(CircleShape).background(Raised),
         contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {
@@ -63,6 +96,10 @@ fun Avatar(name: String, image: ByteArray?, size: Dp, modifier: Modifier = Modif
         }
     }
 }
+
+/** Точка присутствия и её ободок — доли кружка, чтобы одинаково смотреться в 44 и в 120. */
+private const val DOT_SHARE = 0.3f
+private const val DOT_RING = 0.03f
 
 /** Буква занимает чуть меньше половины кружка — так же смотрится и в 44, и в 120 точках. */
 private fun Dp.letterSize(): TextUnit = (value * LETTER_SHARE).sp
