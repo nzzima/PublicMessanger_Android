@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarEncoder
 import com.nzzima.secretmessanger.utils.constants.Constants
+import com.nzzima.secretmessanger.utils.media.sampleSize
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -48,7 +49,7 @@ class AvatarEncoderImpl(private val context: Context) : AvatarEncoder {
         val smaller = minOf(bounds.outWidth, bounds.outHeight)
         if (smaller <= 0) return null
 
-        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize(smaller) }
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize(smaller, Constants.AVATAR_SIDE) }
 
         return context.contentResolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it, null, options)
@@ -100,15 +101,3 @@ class AvatarEncoderImpl(private val context: Context) : AvatarEncoder {
         val QUALITIES = listOf(80, 60, 40)
     }
 }
-
-/**
- * Во сколько раз уменьшать картинку при чтении: наибольшая степень двойки, при которой
- * меньшая сторона остаётся не меньше стороны аватара.
- *
- * Обрыв перебора — `takeWhile`, а не отбор годного из всей последовательности: она
- * бесконечна, и перебор целиком доходил до переполнения `Int`, а следом до деления на ноль.
- */
-internal fun sampleSize(smaller: Int): Int =
-    generateSequence(1) { it * 2 }
-        .takeWhile { it == 1 || smaller / it >= Constants.AVATAR_SIDE }
-        .last()

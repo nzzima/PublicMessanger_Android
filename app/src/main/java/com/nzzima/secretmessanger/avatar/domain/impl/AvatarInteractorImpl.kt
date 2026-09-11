@@ -6,6 +6,7 @@ import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarRepository
 import com.nzzima.secretmessanger.avatar.domain.models.AvatarTooLarge
 import com.nzzima.secretmessanger.utils.constants.Constants
+import com.nzzima.secretmessanger.utils.media.LruBytes
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -75,21 +76,5 @@ class AvatarInteractorImpl(
 
     private companion object {
         const val NO_AVATAR = 0
-    }
-}
-
-/**
- * Кэш картинок с вытеснением самой давней.
- *
- * `LinkedHashMap` в порядке обращения вместо `android.util.LruCache`: домен обходится без
- * платформенных классов, а заодно проверяется обычными JVM-тестами, без заглушек Android.
- */
-private class LruBytes(private val limit: Int) : LinkedHashMap<String, ByteArray>(CAPACITY, LOAD, true) {
-
-    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ByteArray>): Boolean = size > limit
-
-    private companion object {
-        const val CAPACITY = 16
-        const val LOAD = 0.75f
     }
 }
