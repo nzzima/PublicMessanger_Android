@@ -85,6 +85,13 @@ import com.nzzima.secretmessanger.ui.theme.Ink
 import com.nzzima.secretmessanger.ui.theme.InkDim
 import com.nzzima.secretmessanger.ui.theme.OwnBubble
 import com.nzzima.secretmessanger.ui.theme.Raised
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.geometry.Offset
+import com.nzzima.secretmessanger.ui.components.PinIcon
+import com.nzzima.secretmessanger.ui.theme.PlaceGround
+import com.nzzima.secretmessanger.ui.theme.PlacePin
 import com.nzzima.secretmessanger.utils.constants.Constants
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -487,9 +494,11 @@ private fun PhotoSize.bubbleWidth(): Dp {
 /**
  * Точка на карте.
  *
- * Карта не рисуется: показать её нечем — снимок карты требует ключа к платному сервису, а
- * тащить в приложение целый картографический слой ради одного пузыря незачем. Нажатие
- * открывает ту карту, что стоит у человека, ссылкой `geo:`.
+ * **Настоящей карты здесь нет и быть не может.** Офлайн у приложения нет ни тайлов, ни
+ * картографических данных, а тянуть их из сети значило бы рассказывать чужому серверу, где
+ * находится собеседник, — на этом и держалось решение обойтись без Maps SDK. Подложка
+ * нарисована кодом и честно декоративна: она даёт пузырю вес и читается как место с одного
+ * взгляда, а само место показывают координаты и — по нажатию — настоящие карты телефона.
  */
 @Composable
 private fun PlaceBubble(place: Place, label: String) {
@@ -503,9 +512,27 @@ private fun PlaceBubble(place: Place, label: String) {
             // Карты может не быть вовсе — тогда нажатие просто ничего не делает.
             runCatching { context.startActivity(intent) }
         },
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(text = label, color = Ink, fontSize = 16.sp)
+        Box(
+            modifier = Modifier
+                .width(PHOTO_WIDTH)
+                .height(PLACE_HEIGHT)
+                .clip(RoundedCornerShape(PHOTO_CORNER))
+                .background(PlaceGround),
+            contentAlignment = Alignment.Center,
+        ) {
+            PlaceGrid(place)
+
+            Icon(
+                imageVector = PinIcon,
+                contentDescription = label,
+                tint = PlacePin,
+                modifier = Modifier.size(PIN_SIZE),
+            )
+        }
+
+        Text(text = label, color = Ink, fontSize = 15.sp)
 
         // На экране запятая с пробелом, в базе — без: там это разделитель пары, а не знак
         // препинания.
@@ -514,6 +541,33 @@ private fun PlaceBubble(place: Place, label: String) {
             color = InkDim,
             style = TextStyle(fontSize = 12.sp, fontFeatureSettings = "tnum"),
         )
+    }
+}
+
+/**
+ * Подложка под булавкой: сетка «кварталов».
+ *
+ * Расположение линий выведено из самих координат — у двух разных мест рисунок разный. Это не
+ * география, а лишь способ не показывать одну и ту же картинку у всех точек: выдавать сетку
+ * за карту было бы враньём, а одинаковая подложка выглядела бы заглушкой.
+ */
+@Composable
+private fun PlaceGrid(place: Place) {
+    val ground = InkDim
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val step = size.height / GRID_ROWS
+        val shift = ((place.latitude + place.longitude) % 1.0).toFloat() * step
+
+        for (row in 0..GRID_ROWS) {
+            val y = row * step + shift
+            drawLine(ground, Offset(0f, y), Offset(size.width, y), GRID_STROKE, alpha = GRID_ALPHA)
+        }
+
+        for (column in 0..GRID_COLUMNS) {
+            val x = column * (size.width / GRID_COLUMNS) + shift
+            drawLine(ground, Offset(x, 0f), Offset(x, size.height), GRID_STROKE, alpha = GRID_ALPHA)
+        }
     }
 }
 
@@ -569,6 +623,12 @@ private val BUBBLE_MAX_WIDTH = 260.dp
 private val BUBBLE_AVATAR = 30.dp
 private val PHOTO_WIDTH = 220.dp
 private val PHOTO_MAX_HEIGHT = 260.dp
+private val PLACE_HEIGHT = 120.dp
+private val PIN_SIZE = 34.dp
+private const val GRID_ROWS = 4
+private const val GRID_COLUMNS = 6
+private const val GRID_STROKE = 1.5f
+private const val GRID_ALPHA = 0.35f
 private val PHOTO_CORNER = 11.dp
 private val PHOTO_MARGIN = 4.dp
 private val AVATAR_GAP = 8.dp

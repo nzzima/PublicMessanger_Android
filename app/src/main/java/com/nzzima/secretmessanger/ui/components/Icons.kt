@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
  *
  * Своя отрисовка вместо `material-icons`: набор объявлен устаревшим, а нужна из него
  * горстка глифов. Контуры повторяют символы iOS — `person.circle`, `ellipsis.message`,
- * `person`, `chevron.left`, `arrow.up.circle`, `message`, `person.2`, `paperclip`.
+ * `person`, `chevron.left`, `arrow.up.circle`, `message`, `person.2`, `paperclip`, `mappin`.
  *
  * Все строятся в поле 24×24 и рисуются обводкой, поэтому цвет задаёт вызывающий через
  * `tint`.
@@ -157,4 +157,17 @@ val AttachIcon: ImageVector = strokeIcon("attach") {
     lineTo(5.9f, 12.8f)
     arcToRelative(6f, 6f, 0f, false, false, 8.5f, 8.5f)
     lineTo(20f, 15.7f)
+}
+
+/** Булавка — метка места в пузыре геопозиции. */
+val PinIcon: ImageVector = strokeIcon("pin") {
+    // Капля.
+    moveTo(12f, 21f)
+    curveTo(12f, 21f, 19f, 14.5f, 19f, 9.5f)
+    arcToRelative(7f, 7f, 0f, false, false, -14f, 0f)
+    curveTo(5f, 14.5f, 12f, 21f, 12f, 21f)
+    close()
+    // Глазок.
+    moveTo(12f, 7f)
+    arcToRelative(2.5f, 2.5f, 0f, true, true, -0.01f, 0f)
 }
