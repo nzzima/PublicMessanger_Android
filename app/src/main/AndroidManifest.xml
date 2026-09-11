@@ -17,9 +17,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SecretMessanger">
 
+        <!--
+            adjustResize обязателен, и это не вкусовщина. По умолчанию система выбирает
+            adjustPan: она проматывает окно вверх, чтобы поле не закрыла клавиатура. Поверх
+            этого экран переписки добавляет собственный отступ под клавиатуру — и панель ввода
+            уезжала на высоту клавиатуры выше нужного, а шапка экрана уходила за верхний край.
+            С adjustResize система окно не трогает, а отступ считает приложение — один раз.
+        -->
         <activity
             android:name=".main.ui.RootActivity"
             android:exported="true"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.SecretMessanger">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
