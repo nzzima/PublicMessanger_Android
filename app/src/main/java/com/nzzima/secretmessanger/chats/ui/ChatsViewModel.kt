@@ -6,6 +6,7 @@ import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ChatEraser
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
 import com.nzzima.secretmessanger.chats.domain.models.Conversation
+import com.nzzima.secretmessanger.presence.domain.api.PresenceInteractor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -33,6 +34,7 @@ class ChatsViewModel(
     private val chatsInteractor: ChatsInteractor,
     private val profileInteractor: ProfileInteractor,
     private val avatarInteractor: AvatarInteractor,
+    private val presenceInteractor: PresenceInteractor,
     private val chatEraser: ChatEraser,
 ) : ViewModel() {
 
@@ -42,11 +44,29 @@ class ChatsViewModel(
     /** Собеседники, про которых уже спрашивали, — включая тех, у кого аватара не нашлось. */
     private val askedCompanions = mutableSetOf<String>()
 
+    /**
+     * Кто в сети по последнему тику присутствия.
+     *
+     * Хранится отдельно от состояния, потому что приходит раньше первого снимка диалогов:
+     * без этого поля точки ждали бы следующего тика, до полуминуты.
+     */
+    private var online = emptySet<String>()
+
     /** Текущее состояние экрана. */
     fun observeChatsScreenState(): StateFlow<ChatsUiState> = chatsScreenState.asStateFlow()
 
     init {
         subscribe()
+
+        // Присутствие — своя подписка, как в контактах: список перечитывается на каждую
+        // реплику в любом из диалогов, а пульс бьётся у каждого раз в полминуты, и в одном
+        // потоке они дёргали бы друг друга.
+        viewModelScope.launch {
+            presenceInteractor.observeOnline().collect { snapshot ->
+                online = snapshot
+                update { it.copy(online = snapshot) }
+            }
+        }
     }
 
     /**
@@ -158,7 +178,7 @@ class ChatsViewModel(
                                 // Загруженные аватары переживают снимок: список
                                 // перечитывается на каждую реплику в любом из диалогов.
                                 current is ChatsUiState.Content -> current.copy(conversations = conversations)
-                                else -> ChatsUiState.Content(conversations)
+                                else -> ChatsUiState.Content(conversations, online = online)
                             }
                         }
                         loadAvatars(conversations)

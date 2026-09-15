@@ -9,6 +9,7 @@ import com.nzzima.secretmessanger.chats.domain.impl.ChatEraserImpl
 import com.nzzima.secretmessanger.chats.domain.impl.ChatsInteractorImpl
 import com.nzzima.secretmessanger.messanger.domain.FakeMessageRepository
 import com.nzzima.secretmessanger.crypto.domain.FakeConversationKeys
+import com.nzzima.secretmessanger.presence.domain.FakePresenceInteractor
 import com.nzzima.secretmessanger.profile.domain.FakeCompanionProfiles
 import com.nzzima.secretmessanger.session.domain.FakeSessionRepository
 import com.nzzima.secretmessanger.session.domain.impl.SessionInteractorImpl
@@ -45,6 +46,7 @@ class ChatsViewModelTest {
 
     private val profiles = FakeCompanionProfiles()
     private val avatars = FakeAvatarInteractor(image = byteArrayOf(1, 2, 3))
+    private val presence = FakePresenceInteractor()
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
 
@@ -55,6 +57,7 @@ class ChatsViewModelTest {
         ChatsInteractorImpl(conversations, noKeys),
         profiles,
         avatars,
+        presence,
         ChatEraserImpl(conversations, messages, noKeys),
     )
 
@@ -226,6 +229,44 @@ class ChatsViewModelTest {
 
         assertTrue((model.state() as ChatsUiState.Content).avatars.isEmpty())
         assertEquals("спросить о нём всё равно надо было — ровно раз", 1, profiles.requests("uid-2"))
+    }
+
+    @Test
+    fun `сетевой собеседник зажигает точку в строке`() = runTest(dispatcher) {
+        conversations.send(listOf(header(chat = chat(id = "живой"), lastMessage = "привет")))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        presence.online(setOf("uid-2"))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(setOf("uid-2"), (model.state() as ChatsUiState.Content).online)
+    }
+
+    @Test
+    fun `присутствие, пришедшее до диалогов, доживает до первого снимка`() = runTest(dispatcher) {
+        presence.online(setOf("uid-2"))
+        val model = viewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        conversations.send(listOf(header(chat = chat(id = "живой"), lastMessage = "привет")))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        // Иначе точка ждала бы следующего тика присутствия — до полуминуты.
+        assertEquals(setOf("uid-2"), (model.state() as ChatsUiState.Content).online)
+    }
+
+    @Test
+    fun `новый снимок диалогов не гасит точки`() = runTest(dispatcher) {
+        conversations.send(listOf(header(chat = chat(id = "живой"), lastMessage = "привет")))
+        val model = viewModel()
+        presence.online(setOf("uid-2"))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        conversations.send(listOf(header(chat = chat(id = "живой"), lastMessage = "и ещё одна")))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(setOf("uid-2"), (model.state() as ChatsUiState.Content).online)
     }
 
     /** Экран со списком из одного диалога [chat]. */

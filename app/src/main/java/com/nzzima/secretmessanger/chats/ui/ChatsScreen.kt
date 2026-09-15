@@ -154,6 +154,7 @@ private fun ConversationList(
             ConversationRow(
                 conversation = conversation,
                 avatar = conversation.chat.companionId?.let(state.avatars::get),
+                online = conversation.chat.companionId?.let(state.online::contains) == true,
                 onOpen = onOpen,
                 onErase = onErase,
             )
@@ -168,12 +169,16 @@ private fun ConversationList(
  * Удаление висит на долгом нажатии — привычном на Android жесте для действий над строкой
  * списка. Свайпа, как на iOS, здесь нет: там он подсказан системой, а в Compose это своя
  * механика, которая на строке с картинкой и тремя текстами стоила бы дороже, чем даёт.
+ *
+ * Присутствие показано точкой без подписи словами: вторая строка занята превью реплики.
+ * [online] у группы всегда `false` — собеседник там не один.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConversationRow(
     conversation: Conversation,
     avatar: ByteArray?,
+    online: Boolean,
     onOpen: (String) -> Unit,
     onErase: (Conversation) -> Unit,
 ) {
@@ -194,6 +199,7 @@ private fun ConversationRow(
                 image = avatar,
                 size = ROW_AVATAR,
                 modifier = Modifier.padding(end = AVATAR_GAP),
+                online = online,
             )
         }
 
