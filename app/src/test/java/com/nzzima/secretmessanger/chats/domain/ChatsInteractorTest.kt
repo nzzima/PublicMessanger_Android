@@ -127,13 +127,18 @@ class ChatsInteractorTest {
         assertEquals(Constants.MESSAGES_EMPTY, list.first { it.chat.id == "пустой" }.preview)
     }
 
+    /**
+     * Порядок задаёт запрос — с 15.09.2026 «свежие сверху» делает база составным индексом.
+     * Интерактору остаётся его не испортить, и проверяется теперь именно это: снимок приходит
+     * в том порядке, в каком его отдала база, и в том же уходит дальше.
+     */
     @Test
-    fun `свежие сверху`() = runTest {
+    fun `порядок снимка сохраняется как есть`() = runTest {
         conversations.send(
             listOf(
+                header(chat = chat(id = "свежий"), date = 300),
                 header(chat = chat(id = "средний"), date = 200),
                 header(chat = chat(id = "старый"), date = 100),
-                header(chat = chat(id = "свежий"), date = 300),
             ),
         )
 

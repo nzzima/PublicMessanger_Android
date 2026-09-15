@@ -11,10 +11,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
- * Список диалогов: отсев пустых, расшифровка превью, сортировка.
+ * Список диалогов: расшифровка превью; порядок приходит из запроса и здесь не трогается.
  *
- * Сортировка идёт здесь, а не в запросе: пара `arrayContains` + `orderBy` требует
- * составного индекса, которого в базе нет. На десятках диалогов разницы никакой.
+ * Сортировки на клиенте больше нет — с 15.09.2026 её делает база составным индексом. Шапка без
+ * поля `date` в запрос не попадает вовсе, но такой шапки и не бывает: `date` пишется вместе с
+ * `lastMessage`.
  */
 class ChatsInteractorImpl(
     private val conversations: ConversationRepository,
@@ -24,9 +25,7 @@ class ChatsInteractorImpl(
     override fun observeConversations(selfId: String): Flow<Result<List<Conversation>>> =
         conversations.observeHeaders(selfId).map { snapshot ->
             snapshot.map { headers ->
-                headers
-                    .map { Conversation(chat = it.chat, preview = it.preview(), date = it.date) }
-                    .sortedByDescending { it.date }
+                headers.map { Conversation(chat = it.chat, preview = it.preview(), date = it.date) }
             }
         }
 

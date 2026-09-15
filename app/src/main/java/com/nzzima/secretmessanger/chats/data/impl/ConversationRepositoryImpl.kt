@@ -5,6 +5,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import com.nzzima.secretmessanger.chats.domain.api.ConversationRepository
 import com.nzzima.secretmessanger.chats.domain.models.Chat
@@ -22,12 +23,17 @@ import kotlinx.coroutines.tasks.await
  *
  * Запрос `arrayContains(users, selfId)` совпадает с правилом чтения на `conversation/{id}`:
  * чужие диалоги база не отдаёт.
+ *
+ * Порядок задаёт база: пара `arrayContains` + `orderBy` требует составного индекса, и он
+ * выложен 15.09.2026. Без него запрос отвечает `FAILED_PRECONDITION` — список не покажется
+ * вовсе. Файл индекса лежит в репозитории iOS рядом с правилами, база у проектов общая.
  */
 class ConversationRepositoryImpl(private val firestore: FirebaseFirestore) : ConversationRepository {
 
     override fun observeHeaders(selfId: String): Flow<Result<List<ConversationHeader>>> = callbackFlow {
         val registration = firestore.collection(Constants.CONVERSATION_COLLECTION)
             .whereArrayContains(Constants.USERS_FIELD, selfId)
+            .orderBy(Constants.DATE_FIELD, Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(Result.failure(error))
