@@ -15,6 +15,7 @@ import com.nzzima.secretmessanger.voice.domain.api.VoiceRecorder
 import com.nzzima.secretmessanger.voice.domain.models.Recording
 import java.io.File
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
@@ -57,6 +58,35 @@ class FakeMessageRepository : MessageRepository {
     override suspend fun note(convoId: String, senderId: String): Result<Unit> {
         notes += convoId to senderId
         return Result.success(Unit)
+    }
+
+    /** Сколько реплик лежит в диалоге: стираются они страницами, по [erasePage]. */
+    val stock = mutableMapOf<String, Int>()
+
+    /** Размеры стёртых страниц, в порядке вызова: по ним видно, что стирание шло страницами. */
+    val pages = mutableListOf<Int>()
+
+    /** Чем отказывает стирание страницы; `null` — проходит. */
+    var eraseFails: Throwable? = null
+
+    private var pendingErase: CompletableDeferred<Unit>? = null
+
+    /** Подвешивает стирание страниц; отпускается выполнением возвращённого. */
+    fun hangErase(): CompletableDeferred<Unit> = CompletableDeferred<Unit>().also { pendingErase = it }
+
+    override suspend fun erasePage(convoId: String, limit: Long): Result<Int> {
+        eraseFails?.let { return Result.failure(it) }
+
+        val left = stock[convoId] ?: 0
+        val page = minOf(left, limit.toInt())
+
+        // Вызов отмечается до ожидания: по нему видно, что начатое стирание одно, даже пока
+        // оно висит.
+        stock[convoId] = left - page
+        pages += page
+        pendingErase?.await()
+
+        return Result.success(page)
     }
 
     /** Отдаёт подписчикам очередной снимок. */

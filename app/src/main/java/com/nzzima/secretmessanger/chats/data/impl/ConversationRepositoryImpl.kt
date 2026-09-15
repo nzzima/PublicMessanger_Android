@@ -139,6 +139,13 @@ class ConversationRepositoryImpl(private val firestore: FirebaseFirestore) : Con
             .await()
     }
 
+    override suspend fun erase(convoId: String): Result<Unit> = runCatching {
+        firestore.collection(Constants.CONVERSATION_COLLECTION)
+            .document(convoId)
+            .delete()
+            .await()
+    }
+
     override suspend fun create(chat: Chat): Result<Unit> = runCatching {
         firestore.collection(Constants.CONVERSATION_COLLECTION)
             .document(chat.id)

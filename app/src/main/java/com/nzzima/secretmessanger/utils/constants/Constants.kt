@@ -88,6 +88,14 @@ object Constants {
 
     const val MESSAGE_WINDOW = 50L
 
+    /**
+     * Сколько реплик стирается за один батч.
+     *
+     * Не 500, хотя батч Firestore держит именно столько: на реплику уходит до двух операций —
+     * сама она и её вложение.
+     */
+    const val ERASE_PAGE = 200L
+
     const val FIRST_KEY_VERSION = 1
 
     /**
@@ -203,6 +211,12 @@ object Constants {
     const val OWNER_CANNOT_LEAVE = "Создатель из своей группы не выходит"
     const val NOT_A_GROUP = "Выйти можно только из группы"
     const val NOT_THE_OWNER = "Состав группы правит только её создатель"
+    const val CANNOT_ERASE = "Группу удаляет только её создатель"
+    const val ERASE_CHAT = "Удалить"
+    const val ERASE_CHAT_QUESTION = "Удалить переписку?"
+    const val ERASE_CHAT_EXPLANATION =
+        "Она исчезнет у всех участников, вместе со снимками и записями. Вернуть её нельзя."
+    const val ERASE_GROUP_QUESTION = "Удалить группу?"
     const val MEMBERS_TITLE = "Участники"
     const val ADD_MEMBERS = "Добавить"
     const val REMOVE_MEMBER = "Убрать"

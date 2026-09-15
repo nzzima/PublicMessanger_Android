@@ -122,4 +122,11 @@ class FakeConversationKeys : ConversationKeys {
     override fun sealExisting(chat: Chat, publicKeys: Map<String, String>): Map<String, String>? = null
 
     override fun rotate(chat: Chat, publicKeys: Map<String, String>): Pair<Map<String, String>, Int>? = null
+
+    /** Диалоги, про которые велели забыть, в порядке вызова. */
+    val forgotten = mutableListOf<String>()
+
+    override fun forget(convoId: String) {
+        forgotten += convoId
+    }
 }

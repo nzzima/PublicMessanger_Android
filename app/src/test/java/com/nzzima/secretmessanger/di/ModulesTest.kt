@@ -11,6 +11,7 @@ import com.nzzima.secretmessanger.auth.domain.api.ProfileRepairInteractor
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationInteractor
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationProgress
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationRepository
+import com.nzzima.secretmessanger.chats.domain.api.ChatEraser
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarEncoder
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
@@ -131,6 +132,7 @@ class ModulesTest {
                 MessangerInteractor::class,
                 ConversationStarter::class,
                 GroupEditor::class,
+                ChatEraser::class,
             ),
             injections = injectedParameters(
                 definition<MessangerViewModel>(String::class),

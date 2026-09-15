@@ -1,6 +1,7 @@
 package com.nzzima.secretmessanger.chats.ui
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import com.nzzima.secretmessanger.ui.components.NewGroupIcon
 import com.nzzima.secretmessanger.ui.theme.Accent
+import com.nzzima.secretmessanger.ui.theme.ErrorColor
 import com.nzzima.secretmessanger.ui.theme.Ink
 import com.nzzima.secretmessanger.ui.theme.InkDim
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -84,34 +88,101 @@ fun ChatsScreen(
 
                 ChatsUiState.Empty -> Notice(Constants.CHATS_EMPTY)
 
-                is ChatsUiState.Content -> ConversationList(current, onOpen)
+                is ChatsUiState.Content -> ConversationList(current, onOpen, viewModel::onEraseAsked)
 
                 is ChatsUiState.Failed -> FailureNotice(current.message, viewModel::retry)
             }
         }
     }
+
+    (state as? ChatsUiState.Content)?.asking?.let { asking ->
+        EraseQuestion(
+            isGroup = asking.chat.isGroup,
+            isErasing = (state as ChatsUiState.Content).isErasing,
+            error = (state as ChatsUiState.Content).error,
+            onConfirm = viewModel::onEraseConfirmed,
+            onDismiss = viewModel::onEraseDismissed,
+        )
+    }
+}
+
+/**
+ * Вопрос перед стиранием.
+ *
+ * Красной здесь только кнопка подтверждения: знак необратимости перестаёт читаться, если
+ * ставить его на всё подряд.
+ */
+@Composable
+private fun EraseQuestion(
+    isGroup: Boolean,
+    isErasing: Boolean,
+    error: String?,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isGroup) Constants.ERASE_GROUP_QUESTION else Constants.ERASE_CHAT_QUESTION) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(GAP)) {
+                Text(Constants.ERASE_CHAT_EXPLANATION)
+                error?.let { Text(it, color = ErrorColor, fontSize = 14.sp) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !isErasing) {
+                Text(Constants.ERASE_CHAT, color = ErrorColor)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isErasing) {
+                Text(Constants.CANCEL, color = Accent)
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+    )
 }
 
 @Composable
-private fun ConversationList(state: ChatsUiState.Content, onOpen: (String) -> Unit) {
+private fun ConversationList(
+    state: ChatsUiState.Content,
+    onOpen: (String) -> Unit,
+    onErase: (Conversation) -> Unit,
+) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(state.conversations, key = { it.chat.id }) { conversation ->
             ConversationRow(
                 conversation = conversation,
                 avatar = conversation.chat.companionId?.let(state.avatars::get),
                 onOpen = onOpen,
+                onErase = onErase,
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.surface)
         }
     }
 }
 
-/** Строка списка: лицо собеседника, название диалога, превью последней реплики и её время. */
+/**
+ * Строка списка: лицо собеседника, название диалога, превью последней реплики и её время.
+ *
+ * Удаление висит на долгом нажатии — привычном на Android жесте для действий над строкой
+ * списка. Свайпа, как на iOS, здесь нет: там он подсказан системой, а в Compose это своя
+ * механика, которая на строке с картинкой и тремя текстами стоила бы дороже, чем даёт.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ConversationRow(conversation: Conversation, avatar: ByteArray?, onOpen: (String) -> Unit) {
+private fun ConversationRow(
+    conversation: Conversation,
+    avatar: ByteArray?,
+    onOpen: (String) -> Unit,
+    onErase: (Conversation) -> Unit,
+) {
     Row(
         modifier = Modifier
-            .clickable { onOpen(conversation.chat.id) }
+            .combinedClickable(
+                onClick = { onOpen(conversation.chat.id) },
+                onLongClick = { onErase(conversation) },
+            )
             .padding(horizontal = SIDE_PADDING, vertical = ROW_PADDING),
         verticalAlignment = Alignment.Top,
     ) {

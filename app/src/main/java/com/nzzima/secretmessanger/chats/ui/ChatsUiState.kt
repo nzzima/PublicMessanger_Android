@@ -16,10 +16,17 @@ sealed interface ChatsUiState {
      *
      * @property avatars байты аватаров по идентификатору собеседника; кого в карте нет — тот
      *   ещё не загрузился, аватара не имеет либо это группа, у которой его и не бывает.
+     * @property asking диалог, про удаление которого спрашиваем; `null` — не спрашиваем.
+     * @property isErasing идёт стирание: подтверждение уже нажато.
+     * @property error что не так со стиранием. Показывается в том же вопросе: не удалось —
+     *   вопрос остаётся открытым, и повтор здесь же.
      */
     data class Content(
         val conversations: List<Conversation>,
         val avatars: Map<String, ByteArray> = emptyMap(),
+        val asking: Conversation? = null,
+        val isErasing: Boolean = false,
+        val error: String? = null,
     ) : ChatsUiState
 
     /** Подписка отказала. [message] показывается на экране, подписаться можно заново. */

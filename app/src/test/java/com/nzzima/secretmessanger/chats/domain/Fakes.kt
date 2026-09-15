@@ -133,6 +133,24 @@ class FakeConversationRepository(
         return Result.success(Unit)
     }
 
+    /** Диалоги, чьи шапки стёрты, в порядке вызова. */
+    val erased = mutableListOf<String>()
+
+    /** Чем отказывает стирание шапки; `null` — проходит. */
+    var eraseFails: Throwable? = null
+
+    /** Зовётся в момент стирания шапки: им проверяется, что подколлекции уже пусты. */
+    var onErase: (() -> Unit)? = null
+
+    override suspend fun erase(convoId: String): Result<Unit> {
+        eraseFails?.let { return Result.failure(it) }
+
+        onErase?.invoke()
+        erased += convoId
+        stored -= convoId
+        return Result.success(Unit)
+    }
+
     override suspend fun create(chat: Chat): Result<Unit> {
         createFails?.let { return Result.failure(it) }
 

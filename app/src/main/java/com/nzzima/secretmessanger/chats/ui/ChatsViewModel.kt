@@ -3,6 +3,7 @@ package com.nzzima.secretmessanger.chats.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
+import com.nzzima.secretmessanger.chats.domain.api.ChatEraser
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
 import com.nzzima.secretmessanger.chats.domain.models.Conversation
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Состояние экрана списка диалогов.
@@ -31,6 +33,7 @@ class ChatsViewModel(
     private val chatsInteractor: ChatsInteractor,
     private val profileInteractor: ProfileInteractor,
     private val avatarInteractor: AvatarInteractor,
+    private val chatEraser: ChatEraser,
 ) : ViewModel() {
 
     private val chatsScreenState = MutableStateFlow<ChatsUiState>(ChatsUiState.Loading)
@@ -53,6 +56,50 @@ class ChatsViewModel(
      * прежней подпиской нечего.
      */
     fun retry() = subscribe()
+
+    /** Спрашивает, стирать ли переписку; у диалога, который нам стирать не положено, молчит. */
+    fun onEraseAsked(conversation: Conversation) = update { current ->
+        if (current.isErasing || !conversation.chat.canErase) current
+        else current.copy(asking = conversation, error = null)
+    }
+
+    /** Закрывает вопрос, ничего не стерев. */
+    fun onEraseDismissed() = update { current ->
+        if (current.isErasing) current else current.copy(asking = null, error = null)
+    }
+
+    /**
+     * Стирает переписку, про которую спросили.
+     *
+     * Срок нужен против молчащей сети, а не против долгого удаления: оборванное стирание
+     * ничего не ломает — шапка на месте, диалог в списке, повтор доделывает начатое.
+     */
+    fun onEraseConfirmed() {
+        val state = chatsScreenState.value as? ChatsUiState.Content ?: return
+        val conversation = state.asking ?: return
+        if (state.isErasing) return
+
+        update { it.copy(isErasing = true, error = null) }
+
+        viewModelScope.launch {
+            val result = withTimeoutOrNull(Constants.SUBMIT_TIMEOUT_MS) { chatEraser.erase(conversation.chat) }
+
+            update { current ->
+                when {
+                    result == null -> current.copy(isErasing = false, error = Constants.SERVER_SILENT)
+
+                    // Строка уходит из списка подпиской, как у всех остальных участников:
+                    // убирать её здесь значило бы завести второй источник правды.
+                    result.isSuccess -> current.copy(isErasing = false, asking = null)
+
+                    else -> current.copy(
+                        isErasing = false,
+                        error = result.exceptionOrNull()?.message ?: Constants.SERVER_SILENT,
+                    )
+                }
+            }
+        }
+    }
 
     /**
      * Догружает аватары собеседников.
@@ -86,6 +133,11 @@ class ChatsViewModel(
             }
         }
     }
+
+    private fun update(change: (ChatsUiState.Content) -> ChatsUiState.Content) =
+        chatsScreenState.update { current ->
+            if (current is ChatsUiState.Content) change(current) else current
+        }
 
     private fun subscribe() {
         val uid = sessionInteractor.observeSession().value.uidOrNull ?: return

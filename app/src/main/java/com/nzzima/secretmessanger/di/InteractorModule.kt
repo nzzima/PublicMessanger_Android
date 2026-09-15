@@ -13,9 +13,11 @@ import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.avatar.domain.impl.AvatarInteractorImpl
 import com.nzzima.secretmessanger.chats.domain.api.ChatsInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
+import com.nzzima.secretmessanger.chats.domain.api.ChatEraser
 import com.nzzima.secretmessanger.chats.domain.api.GroupEditor
 import com.nzzima.secretmessanger.chats.domain.impl.ChatsInteractorImpl
 import com.nzzima.secretmessanger.chats.domain.impl.ConversationStarterImpl
+import com.nzzima.secretmessanger.chats.domain.impl.ChatEraserImpl
 import com.nzzima.secretmessanger.chats.domain.impl.GroupEditorImpl
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
 import com.nzzima.secretmessanger.contacts.domain.impl.ContactsInteractorImpl
@@ -115,6 +117,10 @@ val interactorModule = module {
 
     single<GroupEditor> {
         GroupEditorImpl(get(), get(), get(), get(), get())
+    }
+
+    single<ChatEraser> {
+        ChatEraserImpl(get(), get(), get())
     }
 
     single<PresenceInteractor> {

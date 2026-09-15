@@ -15,8 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
  * а один ключ обслуживает и превью в списке, и все сообщения диалога.
  *
  * Кэш живёт, пока жив экземпляр, и растёт вместе с числом открытых диалогов; записи из
- * него не вытесняются. Стёртый диалог кэш пережил бы — забывать его будет нечем, пока
- * удаления в приложении нет.
+ * него не вытесняются. Стёртый диалог убирается из кэша явно — [forget].
  */
 class ConversationKeysImpl(private val identityKeys: IdentityKeyStore) : ConversationKeys {
 
@@ -91,6 +90,12 @@ class ConversationKeysImpl(private val identityKeys: IdentityKeyStore) : Convers
         }
 
         return entries to version
+    }
+
+    override fun forget(convoId: String) {
+        // Ключ кэша начинается с идентификатора диалога, а версий и аккаунтов в нём может
+        // быть несколько — убирать надо все.
+        cache.keys.removeAll { it.startsWith("$convoId/") }
     }
 
     private fun decode(encoded: String): ByteArray? =

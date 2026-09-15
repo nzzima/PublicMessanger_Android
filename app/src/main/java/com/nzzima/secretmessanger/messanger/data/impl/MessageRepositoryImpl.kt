@@ -71,6 +71,37 @@ class MessageRepositoryImpl(private val firestore: FirebaseFirestore) : MessageR
             .await()
     }
 
+    override suspend fun erasePage(convoId: String, limit: Long): Result<Int> = runCatching {
+        val page = firestore.messages(convoId)
+            .limit(limit)
+            .get()
+            .await()
+            .documents
+
+        if (page.isEmpty()) return@runCatching 0
+
+        val batch = firestore.batch()
+
+        for (document in page) {
+            batch.delete(document.reference)
+            // Вложение лежит под тем же идентификатором в своей подколлекции; у текста и
+            // служебной отметки вложения нет вовсе.
+            document.getString(Constants.TYPE_FIELD).attachments()?.let { attachments ->
+                batch.delete(firestore.attachment(convoId, attachments, document.id))
+            }
+        }
+
+        batch.commit().await()
+
+        page.size
+    }
+
+    private fun FirebaseFirestore.attachment(convoId: String, attachments: String, messageId: String) =
+        collection(Constants.CONVERSATION_COLLECTION)
+            .document(convoId)
+            .collection(attachments)
+            .document(messageId)
+
     private fun FirebaseFirestore.messages(convoId: String) =
         collection(Constants.CONVERSATION_COLLECTION).document(convoId).collection(Constants.MESSAGES_COLLECTION)
 }
@@ -159,6 +190,13 @@ private fun DocumentSnapshot.photoSize(): PhotoSize? {
     val height = getDouble(Constants.HEIGHT_FIELD)?.toInt() ?: return null
 
     return PhotoSize(width, height).takeIf { it.width > 0 && it.height > 0 }
+}
+
+/** Подколлекция с байтами вложения; `null` — реплика вложения не имеет. */
+private fun String?.attachments(): String? = when (this) {
+    Constants.PHOTO_TYPE -> Constants.IMAGES_COLLECTION
+    Constants.VOICE_TYPE -> Constants.AUDIO_COLLECTION
+    else -> null
 }
 
 /** Вид реплики из поля `type`; незнакомое значение читается как текст. */
