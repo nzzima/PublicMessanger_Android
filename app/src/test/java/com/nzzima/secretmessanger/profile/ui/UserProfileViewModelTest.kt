@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.profile.ui
 
+import com.nzzima.secretmessanger.Refused
 import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
 import com.nzzima.secretmessanger.presence.domain.FakePresenceInteractor
@@ -168,7 +169,7 @@ class UserProfileViewModelTest {
     @Test
     fun `отказ заведения показывается строкой и никуда не ведёт`() = runTest(dispatcher) {
         val model = opened()
-        starter.refusal = IllegalStateException(Constants.COMPANION_KEY_MISSING)
+        starter.refusal = Refused(Constants.COMPANION_KEY_MISSING)
 
         model.onWrite()
         dispatcher.scheduler.advanceUntilIdle()
@@ -196,7 +197,7 @@ class UserProfileViewModelTest {
 
     @Test
     fun `отказ чтения профиля закрывает экран и проверяет сессию`() = runTest(dispatcher) {
-        profiles.fail(IllegalStateException("профиля нет"))
+        profiles.fail(Refused("профиля нет"))
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 

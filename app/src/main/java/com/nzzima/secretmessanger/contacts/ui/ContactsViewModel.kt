@@ -7,7 +7,7 @@ import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
 import com.nzzima.secretmessanger.contacts.domain.models.Contact
 import com.nzzima.secretmessanger.presence.domain.api.PresenceInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
-import com.nzzima.secretmessanger.utils.constants.Constants
+import com.nzzima.secretmessanger.utils.errors.ErrorText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -99,7 +99,7 @@ class ContactsViewModel(
                         loadAvatars(contacts)
                     }
                     .onFailure {
-                        contactsScreenState.value = ContactsUiState.Failed(it.message ?: Constants.SERVER_SILENT)
+                        contactsScreenState.value = ContactsUiState.Failed(ErrorText.of(it))
                         // Отказ Firestore не отличает мёртвую сессию от обрыва связи, а
                         // «Повторить» лечит только второе. Проверка разводит эти два случая:
                         // мёртвая сессия уводит с вкладок целиком.

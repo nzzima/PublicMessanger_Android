@@ -13,6 +13,7 @@ import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.session.domain.models.Session
 import com.nzzima.secretmessanger.session.domain.models.SessionFailure
 import com.nzzima.secretmessanger.utils.constants.Constants
+import com.nzzima.secretmessanger.utils.errors.ErrorText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -142,7 +143,7 @@ class RootViewModel(
         viewModelScope.launch {
             identityInteractor.publishOverwriting(uid)
                 .onSuccess { rootState.value = ready() }
-                .onFailure { rootState.value = RootState.Failed(it.message ?: Constants.SERVER_SILENT) }
+                .onFailure { rootState.value = RootState.Failed(ErrorText.of(it)) }
         }
     }
 
@@ -158,7 +159,7 @@ class RootViewModel(
         viewModelScope.launch {
             profileRepairInteractor.complete(uid, login)
                 .onSuccess { prepare(uid) }
-                .onFailure { rootState.value = RootState.NeedsProfile(it.message ?: Constants.SERVER_SILENT) }
+                .onFailure { rootState.value = RootState.NeedsProfile(ErrorText.of(it)) }
         }
     }
 
@@ -178,13 +179,13 @@ class RootViewModel(
             // выставляется здесь же, чтобы не зависеть от порядка повторной выдачи потока.
             rootState.value = when (error) {
                 is SessionFailure.Expired -> RootState.Expired
-                else -> RootState.Failed(error.message ?: Constants.SERVER_SILENT)
+                else -> RootState.Failed(ErrorText.of(error))
             }
             return
         }
 
         val complete = profileRepairInteractor.isComplete(uid).getOrElse { error ->
-            rootState.value = RootState.Failed(error.message ?: Constants.SERVER_SILENT)
+            rootState.value = RootState.Failed(ErrorText.of(error))
             return
         }
 
@@ -200,7 +201,7 @@ class RootViewModel(
                     IdentityState.NeedsConfirmation -> RootState.NeedsConfirmation
                 }
             }
-            .onFailure { rootState.value = RootState.Failed(it.message ?: Constants.SERVER_SILENT) }
+            .onFailure { rootState.value = RootState.Failed(ErrorText.of(it)) }
     }
 
     /**

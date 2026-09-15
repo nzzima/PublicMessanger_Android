@@ -8,6 +8,7 @@ import com.nzzima.secretmessanger.profile.domain.api.ProfileEditor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
+import com.nzzima.secretmessanger.utils.errors.ErrorText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -89,7 +90,7 @@ class EditProfileViewModel(
                     result.isSuccess -> current.copy(isSaving = false, saved = true)
                     else -> current.copy(
                         isSaving = false,
-                        error = result.exceptionOrNull()?.message ?: Constants.SERVER_SILENT,
+                        error = ErrorText.of(result.exceptionOrNull()),
                     )
                 }
             }
@@ -139,7 +140,7 @@ class EditProfileViewModel(
                 }
                 .onFailure { error ->
                     update {
-                        it.copy(isAvatarChanging = false, error = error.message ?: Constants.SERVER_SILENT)
+                        it.copy(isAvatarChanging = false, error = ErrorText.of(error))
                     }
                 }
         }

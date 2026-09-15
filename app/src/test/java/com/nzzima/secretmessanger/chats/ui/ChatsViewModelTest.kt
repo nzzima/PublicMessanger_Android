@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.chats.ui
 
+import com.nzzima.secretmessanger.Refused
 import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.chats.domain.FakeConversationRepository
 import com.nzzima.secretmessanger.chats.domain.chat
@@ -107,7 +108,7 @@ class ChatsViewModelTest {
 
     @Test
     fun `отказ показывается своим текстом`() = runTest(dispatcher) {
-        conversations.fail(IllegalStateException("нет доступа"))
+        conversations.fail(Refused("нет доступа"))
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
@@ -116,7 +117,7 @@ class ChatsViewModelTest {
 
     @Test
     fun `отказ без текста показывается общим сообщением`() = runTest(dispatcher) {
-        conversations.fail(IllegalStateException())
+        conversations.fail(Refused())
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
@@ -125,7 +126,7 @@ class ChatsViewModelTest {
 
     @Test
     fun `повтор подписывается заново`() = runTest(dispatcher) {
-        conversations.fail(IllegalStateException("нет доступа"))
+        conversations.fail(Refused("нет доступа"))
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
@@ -142,7 +143,7 @@ class ChatsViewModelTest {
 
     @Test
     fun `отказ подписки проверяет сессию`() = runTest(dispatcher) {
-        conversations.fail(IllegalStateException("PERMISSION_DENIED"))
+        conversations.fail(Refused("PERMISSION_DENIED"))
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
@@ -161,7 +162,7 @@ class ChatsViewModelTest {
     @Test
     fun `мёртвая сессия, найденная по отказу, снимает сессию с аккаунта`() = runTest(dispatcher) {
         sessions.revalidateFails = SessionFailure.Expired
-        conversations.fail(IllegalStateException("PERMISSION_DENIED"))
+        conversations.fail(Refused("PERMISSION_DENIED"))
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
@@ -347,7 +348,7 @@ class ChatsViewModelTest {
     @Test
     fun `отказ остаётся в вопросе, а переписка — в списке`() = runTest(dispatcher) {
         val model = opened()
-        conversations.eraseFails = IllegalStateException("нет прав")
+        conversations.eraseFails = Refused("нет прав")
         model.asked()
 
         model.onEraseConfirmed()

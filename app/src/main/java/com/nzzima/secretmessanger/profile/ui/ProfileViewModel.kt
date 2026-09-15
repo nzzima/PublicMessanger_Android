@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
-import com.nzzima.secretmessanger.utils.constants.Constants
+import com.nzzima.secretmessanger.utils.errors.ErrorText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,7 +63,7 @@ class ProfileViewModel(
                         loadAvatar(profile.id, profile.avatarVersion)
                     }
                     .onFailure {
-                        profileScreenState.value = ProfileUiState.Failed(it.message ?: Constants.SERVER_SILENT)
+                        profileScreenState.value = ProfileUiState.Failed(ErrorText.of(it))
                         // Отказ Firestore не отличает мёртвую сессию от обрыва связи, а
                         // «Повторить» лечит только второе. Проверка разводит эти два случая:
                         // мёртвая сессия уводит с вкладок целиком.

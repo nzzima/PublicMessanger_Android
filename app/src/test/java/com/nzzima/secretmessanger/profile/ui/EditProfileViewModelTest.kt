@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.profile.ui
 
+import com.nzzima.secretmessanger.Refused
 import com.nzzima.secretmessanger.avatar.domain.FakeAvatarInteractor
 import com.nzzima.secretmessanger.profile.domain.FakeProfileReader
 import com.nzzima.secretmessanger.profile.domain.api.ProfileEditor
@@ -115,7 +116,7 @@ class EditProfileViewModelTest {
     @Test
     fun `занятое имя показывается строкой и на экране оставляет`() = runTest(dispatcher) {
         val model = opened()
-        editor.refusal = IllegalStateException(Constants.LOGIN_TAKEN)
+        editor.refusal = Refused(Constants.LOGIN_TAKEN)
 
         model.onLoginChange("red")
         model.onSave()
@@ -182,7 +183,7 @@ class EditProfileViewModelTest {
     @Test
     fun `отказ записи аватара показывается строкой`() = runTest(dispatcher) {
         val model = opened()
-        avatars.refusal = IllegalStateException(Constants.AVATAR_TOO_LARGE)
+        avatars.refusal = Refused(Constants.AVATAR_TOO_LARGE)
 
         model.onAvatarPicked("content://pic")
         dispatcher.scheduler.advanceUntilIdle()
@@ -215,7 +216,7 @@ class EditProfileViewModelTest {
 
     @Test
     fun `профиля нет — форма не открывается`() = runTest(dispatcher) {
-        profiles.fail(IllegalStateException("профиля нет"))
+        profiles.fail(Refused("профиля нет"))
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 

@@ -6,6 +6,7 @@ import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
+import com.nzzima.secretmessanger.utils.errors.ErrorText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -80,7 +81,7 @@ class NewGroupViewModel(
 
                     else -> current.copy(
                         isCreating = false,
-                        error = result.exceptionOrNull()?.message ?: Constants.SERVER_SILENT,
+                        error = ErrorText.of(result.exceptionOrNull()),
                     )
                 }
             }
@@ -114,7 +115,7 @@ class NewGroupViewModel(
                     }
                     .onFailure {
                         newGroupScreenState.value =
-                            NewGroupUiState.Failed(it.message ?: Constants.SERVER_SILENT)
+                            NewGroupUiState.Failed(ErrorText.of(it))
                     }
             }
         }

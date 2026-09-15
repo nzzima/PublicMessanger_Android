@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.messanger.ui
 
+import com.nzzima.secretmessanger.Refused
 import com.nzzima.secretmessanger.chats.domain.FakeConversationRepository
 import com.nzzima.secretmessanger.chats.domain.chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
@@ -241,7 +242,7 @@ class MessangerViewModelTest {
     @Test
     fun `отказ подписки закрывает экран и проверяет сессию`() = runTest(dispatcher) {
         conversations.sendChat(chat())
-        messages.fail(IllegalStateException("PERMISSION_DENIED"))
+        messages.fail(Refused("PERMISSION_DENIED"))
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
@@ -687,7 +688,7 @@ class MessangerViewModelTest {
     @Test
     fun `неудавшийся выход оставляет в группе и показывает причину`() = runTest(dispatcher) {
         val model = groupOpened()
-        conversations.leaveFails = IllegalStateException("нет связи")
+        conversations.leaveFails = Refused("нет связи")
 
         model.onLeaveAsked()
         model.onLeaveConfirmed()

@@ -1,6 +1,7 @@
 package com.nzzima.secretmessanger.profile.data.impl
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.nzzima.secretmessanger.profile.domain.models.ProfileMissing
 import com.nzzima.secretmessanger.profile.domain.api.ProfileReader
 import com.nzzima.secretmessanger.profile.domain.models.Profile
 import com.nzzima.secretmessanger.utils.constants.Constants
@@ -24,7 +25,7 @@ class ProfileReaderImpl(private val firestore: FirebaseFirestore) : ProfileReade
                 if (snapshot == null) return@addSnapshotListener
 
                 if (!snapshot.exists()) {
-                    trySend(Result.failure(IllegalStateException(Constants.PROFILE_MISSING)))
+                    trySend(Result.failure(ProfileMissing()))
                     close()
                     return@addSnapshotListener
                 }

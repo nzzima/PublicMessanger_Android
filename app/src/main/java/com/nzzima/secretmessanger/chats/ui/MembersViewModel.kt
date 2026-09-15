@@ -7,6 +7,7 @@ import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.contacts.domain.api.ContactsInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
+import com.nzzima.secretmessanger.utils.errors.ErrorText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -99,7 +100,7 @@ class MembersViewModel(
 
                     else -> current.copy(
                         isWorking = false,
-                        error = result.exceptionOrNull()?.message ?: Constants.SERVER_SILENT,
+                        error = ErrorText.of(result.exceptionOrNull()),
                     )
                 }
             }
@@ -121,7 +122,7 @@ class MembersViewModel(
                     }
                     .onFailure {
                         membersScreenState.value =
-                            MembersUiState.Failed(it.message ?: Constants.SERVER_SILENT)
+                            MembersUiState.Failed(ErrorText.of(it))
                     }
             }
         }

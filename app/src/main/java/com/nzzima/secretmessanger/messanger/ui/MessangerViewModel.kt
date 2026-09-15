@@ -2,6 +2,7 @@ package com.nzzima.secretmessanger.messanger.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nzzima.secretmessanger.messanger.domain.models.PlaceUnknown
 import com.nzzima.secretmessanger.avatar.domain.api.AvatarInteractor
 import com.nzzima.secretmessanger.chats.domain.models.Chat
 import com.nzzima.secretmessanger.chats.domain.models.ConversationGone
@@ -17,6 +18,7 @@ import com.nzzima.secretmessanger.voice.domain.api.VoiceRecorder
 import com.nzzima.secretmessanger.profile.domain.api.ProfileInteractor
 import com.nzzima.secretmessanger.session.domain.api.SessionInteractor
 import com.nzzima.secretmessanger.utils.constants.Constants
+import com.nzzima.secretmessanger.utils.errors.ErrorText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -148,7 +150,7 @@ class MessangerViewModel(
      * уходит, а причина показывается строкой.
      */
     fun onLocationPicked() = sending { chat ->
-        val place = locationSource.current() ?: return@sending Result.failure(IllegalStateException(Constants.PLACE_UNKNOWN))
+        val place = locationSource.current() ?: return@sending Result.failure(PlaceUnknown())
 
         messangerInteractor.sendLocation(chat, place)
     }
@@ -194,7 +196,7 @@ class MessangerViewModel(
                     result.isSuccess -> current.copy(isSending = false, draft = if (clearsDraft) "" else current.draft)
                     else -> current.copy(
                         isSending = false,
-                        error = result.exceptionOrNull()?.message ?: Constants.SERVER_SILENT,
+                        error = ErrorText.of(result.exceptionOrNull()),
                     )
                 }
             }
@@ -379,7 +381,7 @@ class MessangerViewModel(
                 .onSuccess { update { it.copy(isSending = false, left = true) } }
                 .onFailure { error ->
                     update {
-                        it.copy(isSending = false, error = error.message ?: Constants.SERVER_SILENT)
+                        it.copy(isSending = false, error = ErrorText.of(error))
                     }
                     // Переподписка молча: обычная сбрасывает экран в ожидание, а вместе с
                     // ним стёрлась бы и причина, ради которой человек здесь остался.
@@ -478,7 +480,7 @@ class MessangerViewModel(
                     .onFailure { error ->
                         val gone = error is ConversationGone
                         messangerScreenState.value = MessangerUiState.Failed(
-                            message = error.message ?: Constants.SERVER_SILENT,
+                            message = ErrorText.of(error),
                             canRetry = !gone,
                         )
 

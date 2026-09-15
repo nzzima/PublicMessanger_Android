@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.main.ui
 
+import com.nzzima.secretmessanger.Refused
 import com.nzzima.secretmessanger.auth.domain.FakeLoginRepository
 import com.nzzima.secretmessanger.auth.domain.FakeProfileRepository
 import com.nzzima.secretmessanger.auth.domain.api.RegistrationProgress
@@ -95,7 +96,7 @@ class RootViewModelTest {
 
     @Test
     fun `отказ проверки не пускает в чаты и показывает причину`() = runTest(dispatcher) {
-        identity.prepareFails = IllegalStateException("client is offline")
+        identity.prepareFails = Refused("client is offline")
         sessions.signIn("uid-1")
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
@@ -120,7 +121,7 @@ class RootViewModelTest {
     @Test
     fun `неудачная публикация оставляет на развилке`() = runTest(dispatcher) {
         identity.state = IdentityState.NeedsConfirmation
-        identity.overwriteFails = IllegalStateException("PERMISSION_DENIED")
+        identity.overwriteFails = Refused("PERMISSION_DENIED")
         sessions.signIn("uid-1")
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
@@ -133,7 +134,7 @@ class RootViewModelTest {
 
     @Test
     fun `повтор после отказа связи доводит до чатов`() = runTest(dispatcher) {
-        identity.prepareFails = IllegalStateException("client is offline")
+        identity.prepareFails = Refused("client is offline")
         sessions.signIn("uid-1")
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
@@ -158,7 +159,7 @@ class RootViewModelTest {
 
     @Test
     fun `отказ связи при проверке сессии оставляет повтор осмысленным`() = runTest(dispatcher) {
-        sessions.revalidateFails = IllegalStateException("client is offline")
+        sessions.revalidateFails = Refused("client is offline")
         sessions.signIn("uid-1")
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()

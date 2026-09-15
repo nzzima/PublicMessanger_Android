@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.chats.ui
 
+import com.nzzima.secretmessanger.Refused
 import com.nzzima.secretmessanger.chats.domain.FakeConversationRepository
 import com.nzzima.secretmessanger.chats.domain.api.GroupEditor
 import com.nzzima.secretmessanger.chats.domain.chat
@@ -118,7 +119,7 @@ class MembersViewModelTest {
     @Test
     fun `отказ показывается строкой, а состав остаётся прежним`() = runTest(dispatcher) {
         val model = opened()
-        editor.refusal = IllegalStateException("нет доступа")
+        editor.refusal = Refused("нет доступа")
 
         model.onRemove("uid-3")
         dispatcher.scheduler.advanceUntilIdle()

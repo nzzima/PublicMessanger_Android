@@ -1,5 +1,6 @@
 package com.nzzima.secretmessanger.chats.ui
 
+import com.nzzima.secretmessanger.Refused
 import com.nzzima.secretmessanger.chats.domain.api.ConversationStarter
 import com.nzzima.secretmessanger.contacts.domain.FakeContactsRepository
 import com.nzzima.secretmessanger.contacts.domain.impl.ContactsInteractorImpl
@@ -99,7 +100,7 @@ class NewGroupViewModelTest {
     @Test
     fun `отказ показывается строкой, а группа не открывается`() = runTest(dispatcher) {
         val model = opened()
-        starter.refusal = IllegalStateException("нет связи")
+        starter.refusal = Refused("нет связи")
         model.onToggle("uid-2")
         model.onToggle("uid-3")
 
@@ -145,7 +146,7 @@ class NewGroupViewModelTest {
 
     @Test
     fun `отказ подписки показывается своим текстом`() = runTest(dispatcher) {
-        contacts.fail(IllegalStateException("нет доступа"))
+        contacts.fail(Refused("нет доступа"))
         val model = viewModel()
         dispatcher.scheduler.advanceUntilIdle()
 

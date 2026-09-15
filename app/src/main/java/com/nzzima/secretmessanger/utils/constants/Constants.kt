@@ -154,6 +154,19 @@ object Constants {
     const val SHORT_PASSWORD = "Пароль должен быть не короче 6 символов"
     const val PASSWORDS_MISMATCH = "Пароли не совпадают"
     const val SERVER_SILENT = "Сервер не ответил. Проверьте связь и попробуйте снова"
+
+    // Тексты ошибок Firebase — см. utils/errors/ErrorText.kt. Дословно совпадают с iOS.
+    const val NO_CONNECTION = "Нет связи. Проверьте интернет и попробуйте снова"
+    const val SESSION_EXPIRED_TEXT = "Сессия истекла. Войдите заново"
+    const val NO_SUCH_ACCOUNT = "Такого аккаунта нет"
+    const val ACCOUNT_DISABLED = "Аккаунт отключён"
+    const val TOO_MANY_ATTEMPTS = "Слишком много попыток. Подождите и попробуйте снова"
+    const val NEEDS_RECENT_LOGIN = "Для этого нужно войти заново"
+    const val ACTION_NOT_ALLOWED = "Это действие недоступно"
+    const val ALREADY_DELETED = "Уже удалено"
+    const val QUOTA_EXCEEDED = "Превышен лимит запросов. Попробуйте позже"
+    const val NOT_FINISHED = "Не довели до конца. Попробуйте ещё раз"
+    const val INDEX_MISSING = "База не готова выполнить запрос. Сообщите разработчику"
     const val MALFORMED_PAYLOAD = "Не удалось разобрать зашифрованные данные"
     const val WRONG_KEY = "Сообщение зашифровано другим ключом"
 
